@@ -13,7 +13,7 @@ import java.util.logging.Logger
  */
 object Signatures {
     // Logging support
-    private val LOG: Logger = Logger.getLogger(Signatures::class.java.getName())
+    private val LOG: Logger = Logger.getLogger(Signatures::class.java.name)
 
     /*
    * Extracts the package name from a compound name (assuming the package name to be all but the
