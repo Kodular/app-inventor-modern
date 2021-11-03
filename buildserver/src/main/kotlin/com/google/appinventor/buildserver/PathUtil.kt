@@ -16,7 +16,7 @@ import java.util.logging.Logger
  */
 object PathUtil {
     // Logging support
-    private val LOG: Logger = Logger.getLogger(PathUtil::class.java.getName())
+    private val LOG: Logger = Logger.getLogger(PathUtil::class.java.name)
 
     // Default character encoding
     const val DEFAULT_CHARSET = "Cp1252"
@@ -29,15 +29,9 @@ object PathUtil {
      * @return path, with any leading directory elements removed
      */
     fun basename(path: String): String {
-        if (path.length() === 0) {
-            return path
-        }
+        if (path.isEmpty()) return path
         val pos: Int = path.lastIndexOf("/")
-        return if (pos == -1) {
-            path
-        } else {
-            path.substring(pos + 1)
-        }
+        return if (pos == -1) path else path.substring(pos + 1)
     }
 
     /**
@@ -61,12 +55,10 @@ object PathUtil {
      */
     fun dirname(path: String): String {
         val lastSlash: Int = path.lastIndexOf("/")
-        return if ("/".equals(path) || lastSlash == 0) {
-            "/"
-        } else if (lastSlash == -1) {
-            "."
-        } else {
-            path.substring(0, lastSlash)
+        return when {
+            "/" == path || lastSlash == 0 -> "/"
+            lastSlash == -1 -> "."
+            else -> path.substring(0, lastSlash)
         }
     }
 
@@ -97,28 +89,17 @@ object PathUtil {
      * Returns the content type for the given filePath.
      */
     fun getContentTypeForFilePath(filePath: String): String {
-        var filePath = filePath
-        filePath = filePath.toLowerCase()
-        if (filePath.endsWith(".gif")) {
-            return "image/gif"
+        val filePath = filePath.lowercase()
+        return when {
+            filePath.endsWith(".gif") -> "image/gif"
+            filePath.endsWith(".jpg") || filePath.endsWith(".jpeg") -> "image/jpeg"
+            filePath.endsWith(".png") -> "image/png"
+            filePath.endsWith(".apk") -> "application/vnd.android.package-archive; charset=utf-8"
+            filePath.endsWith(".zip") -> "application/zip; charset=utf-8"
+            filePath.endsWith(".keystore") -> "application/octet-stream"
+            else -> "text/plain; charset=utf-8"
         }
-        if (filePath.endsWith(".jpg") || filePath.endsWith(".jpeg")) {
-            return "image/jpeg"
-        }
-        if (filePath.endsWith(".png")) {
-            return "image/png"
-        }
-        if (filePath.endsWith(".apk")) {
-            return "application/vnd.android.package-archive; charset=utf-8"
-        }
-        if (filePath.endsWith(".zip")) {
-            return "application/zip; charset=utf-8"
-        }
-        return if (filePath.endsWith(".keystore")) {
-            "application/octet-stream"
-        } else "text/plain; charset=utf-8"
 
-        // default
     }
 
     /**
