@@ -3,6 +3,7 @@ package me.pavi2410.buildserver
 import com.google.appinventor.buildserver.ProjectBuilder
 import com.google.appinventor.buildserver.Result
 import kotlinx.cli.*
+import java.io.File
 import java.io.IOException
 import java.util.logging.Logger
 import java.util.zip.ZipFile
@@ -37,7 +38,7 @@ fun main(args: Array<String>) {
     val result: Result = projectBuilder.build(
         userName,
         inputZip,
-        outputDir,
+        File(outputDir),
         outputFileName,
         isForCompanion,
         isForEmulator,
