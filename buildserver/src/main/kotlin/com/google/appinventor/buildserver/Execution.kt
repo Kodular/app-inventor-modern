@@ -5,7 +5,9 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 package com.google.appinventor.buildserver
 
-import com.google.common.base.Joiner
+import java.io.*
+import java.util.logging.Level
+import java.util.logging.Logger
 
 /**
  * Utility class for command execution and I/O redirection.
@@ -13,8 +15,7 @@ import com.google.common.base.Joiner
  */
 object Execution {
     // Logging support
-    private val LOG: Logger = Logger.getLogger(Execution::class.java.getName())
-    private val joiner: Joiner = Joiner.on(" ")
+    private val LOG: Logger = Logger.getLogger(Execution::class.java.name)
 
     /**
      * Executes a command in a command shell.
@@ -25,11 +26,8 @@ object Execution {
      * @param err  standard error stream to redirect to
      * @return  `true` if the command succeeds, `false` otherwise
      */
-    fun execute(
-        workingDir: File?, command: Array<String>, out: PrintStream?,
-        err: PrintStream?
-    ): Boolean {
-        LOG.log(Level.INFO, "____Executing " + joiner.join(command))
+    fun execute(workingDir: File?, command: Array<String>, out: PrintStream, err: PrintStream): Boolean {
+        LOG.log(Level.INFO, "____Executing " + command.joinToString(" "))
         if (System.getProperty("os.name").startsWith("Windows")) {
             for (i in command.indices) {
                 command[i] = command[i].replace("\"", "\\\"")
@@ -37,9 +35,9 @@ object Execution {
         }
         return try {
             val process: Process = Runtime.getRuntime().exec(command, null, workingDir)
-            RedirectStreamHandler(PrintWriter(out, true), process.getInputStream())
-            RedirectStreamHandler(PrintWriter(err, true), process.getErrorStream())
-            process.waitFor() === 0
+            RedirectStreamHandler(PrintWriter(out, true), process.inputStream)
+            RedirectStreamHandler(PrintWriter(err, true), process.errorStream)
+            process.waitFor() == 0
         } catch (e: Exception) {
             LOG.log(Level.WARNING, "____Execution failure: ", e)
             false
@@ -57,14 +55,11 @@ object Execution {
      * @return  the exit code of the process
      */
     @Throws(IOException::class)
-    fun execute(
-        workingDir: File?, command: Array<String?>?, out: StringBuffer?,
-        err: StringBuffer?
-    ): Int {
-        LOG.log(Level.INFO, "____Executing ${joiner.join(command)}")
+    fun execute(workingDir: File?, command: Array<String?>, out: StringBuffer, err: StringBuffer): Int {
+        LOG.log(Level.INFO, "____Executing ${command.joinToString(" ")}")
         val process: Process = Runtime.getRuntime().exec(command, null, workingDir)
-        val outThread: Thread = RedirectStreamToStringBuffer(out, process.getInputStream())
-        val errThread: Thread = RedirectStreamToStringBuffer(err, process.getErrorStream())
+        val outThread: Thread = RedirectStreamToStringBuffer(out, process.inputStream)
+        val errThread: Thread = RedirectStreamToStringBuffer(err, process.errorStream)
         try {
             process.waitFor()
             outThread.join()
@@ -75,9 +70,9 @@ object Execution {
         return process.exitValue()
     }
 
-    /*
-   * Input stream handler used for stdout and stderr redirection.
-   */
+    /**
+     * Input stream handler used for stdout and stderr redirection.
+     */
     private class RedirectStreamHandler(
         private val output: PrintWriter,
         private val input: InputStream
@@ -88,22 +83,15 @@ object Execution {
         }
 
         override fun run() {
-            try {
-                val reader = BufferedReader(InputStreamReader(input))
-                var line: String?
-                while (reader.readLine().also { line = it } != null) {
-                    output.println(line)
-                }
-            } catch (ioe: IOException) {
-                // OK to ignore...
-                LOG.log(Level.WARNING, "____I/O Redirection failure: ", ioe)
+            input.bufferedReader().forEachLine { line ->
+                output.println(line)
             }
         }
     }
 
-    /*
-   * Input stream handler used for stdout and stderr redirection to StringBuffer
-   */
+    /**
+     * Input stream handler used for stdout and stderr redirection to StringBuffer
+     */
     private class RedirectStreamToStringBuffer(
         private val output: StringBuffer,
         private val input: InputStream
@@ -114,15 +102,8 @@ object Execution {
         }
 
         override fun run() {
-            try {
-                val reader = BufferedReader(InputStreamReader(input))
-                var line: String?
-                while (reader.readLine().also { line = it } != null) {
-                    output.append(line).append("\n")
-                }
-            } catch (ioe: IOException) {
-                // OK to ignore...
-                LOG.log(Level.WARNING, "____I/O Redirection failure: ", ioe)
+            input.bufferedReader().forEachLine { line ->
+                output.appendLine(line)
             }
         }
     }
