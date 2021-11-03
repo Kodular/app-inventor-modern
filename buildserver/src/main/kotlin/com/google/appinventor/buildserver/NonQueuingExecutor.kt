@@ -6,6 +6,8 @@
 package com.google.appinventor.buildserver
 
 import java.util.concurrent.Executor
+import java.util.concurrent.RejectedExecutionException
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * An [Executor] used for executing tasks using a thread pool.
@@ -14,35 +16,29 @@ import java.util.concurrent.Executor
  * This ExecutorService allows only a certain number of simultaneous tasks.
  * Additional tasks are rejected, not queued.
  *
+ * @param maxActiveTasks the maximum number of active tasks
+ *
  * @author lizlooney@google.com (Liz Looney)
  */
-internal class NonQueuingExecutor
-/**
- * Creates a NonQueuingExecutor.
- *
- * @param maxActiveTasks the maximum number of active tasks
- */(  // The maximum number of active tasks. O means unlimited.
-    val maxActiveTasks: Int
+internal class NonQueuingExecutor(
+    private val maxActiveTasks: Int // The maximum number of active tasks. O means unlimited.
 ) : Executor {
     private val activeTaskCount: AtomicInteger = AtomicInteger(0)
     private val completedTaskCount: AtomicInteger = AtomicInteger(0)
 
     // lockExecute is used so that the execute method can be executed only one thread at a time.
-    private val lockExecute: Object = Object()
-    @Override
-    fun execute(runnable: Runnable) {
+    private val lockExecute = Any()
+
+    override fun execute(runnable: Runnable) {
         synchronized(lockExecute) {
             // Check whether the executor is below maximum capacity.
             if (maxActiveTasks == 0 || activeTaskCount.get() < maxActiveTasks) {
                 // Create a new thread for the task.
-                val thread = Thread(object : Runnable() {
-                    @Override
-                    fun run() {
-                        runnable.run()
-                        activeTaskCount.decrementAndGet()
-                        completedTaskCount.incrementAndGet()
-                    }
-                })
+                val thread = Thread {
+                    runnable.run()
+                    activeTaskCount.decrementAndGet()
+                    completedTaskCount.incrementAndGet()
+                }
                 activeTaskCount.incrementAndGet()
                 thread.start()
             } else {
@@ -52,16 +48,7 @@ internal class NonQueuingExecutor
         }
     }
 
-    fun getActiveTaskCount(): Int {
-        return activeTaskCount.get()
-    }
+    fun getActiveTaskCount(): Int = activeTaskCount.get()
 
-    fun getCompletedTaskCount(): Int {
-        return completedTaskCount.get()
-    }
-
-    companion object {
-        // Logging support
-        private val LOG: Logger = Logger.getLogger(NonQueuingExecutor::class.java.getName())
-    }
+    fun getCompletedTaskCount(): Int = completedTaskCount.get()
 }
