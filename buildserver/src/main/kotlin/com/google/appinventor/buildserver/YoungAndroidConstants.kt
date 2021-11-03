@@ -5,10 +5,6 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 package com.google.appinventor.buildserver
 
-import kotlin.Throws
-import kotlin.jvm.Synchronized
-import kotlin.jvm.Volatile
-
 /**
  * Constants related to Young Android projects and files.
  *
