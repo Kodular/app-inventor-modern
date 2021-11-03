@@ -20,6 +20,7 @@ dependencies {
     implementation("io.ktor:ktor-serialization:$ktor_version")
 
     implementation("org.jetbrains.kotlinx:kotlinx-cli:0.3.3")
+    implementation("org.json:json:20210307")
 
 //    testImplementation "io.ktor:ktor-server-tests:$ktor_version"
 //    testImplementation "org.jetbrains.kotlin:kotlin-test"
