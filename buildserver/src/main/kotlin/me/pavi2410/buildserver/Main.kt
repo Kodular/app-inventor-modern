@@ -11,7 +11,7 @@ import java.util.zip.ZipFile
 private val LOG = Logger.getLogger("Buildserver CLI")
 
 fun main(args: Array<String>) {
-    val parser = ArgParser("buildserver")
+    val parser = ArgParser("cli")
 
     val isForCompanion by parser.option(ArgType.Boolean, description = "create the MIT AI2 Companion APK").default(false)
     val inputZipFile by parser.option(ArgType.String, description = "the ZIP file of the project to build").required()
