@@ -6,6 +6,18 @@
 package com.google.appinventor.buildserver
 
 import com.google.appinventor.common.utils.StringUtils
+import org.json.JSONArray
+import org.json.JSONException
+import org.json.JSONObject
+import java.io.*
+import java.nio.charset.StandardCharsets
+import java.nio.file.Files
+import java.util.*
+import java.util.logging.Logger
+import java.util.regex.Matcher
+import java.util.regex.Pattern
+import java.util.zip.ZipEntry
+import java.util.zip.ZipFile
 
 /**
  * Provides support for building Young Android projects.
@@ -26,7 +38,7 @@ class ProjectBuilder {
 
     fun build(
         userName: String?,
-        inputZip: ZipFile?,
+        inputZip: ZipFile,
         outputDir: File?,
         outputFileName: String?,
         isForCompanion: Boolean,
@@ -41,17 +53,16 @@ class ProjectBuilder {
         return try {
             // Download project files into a temporary directory
             val projectRoot: File = createNewTempDir()
-            LOG.info("temporary project root: " + projectRoot.getAbsolutePath())
+            LOG.info("temporary project root: ${projectRoot.absolutePath}")
             try {
-                val sourceFiles: List<String>
-                sourceFiles = try {
+                val sourceFiles: List<String> = try {
                     extractProjectFiles(inputZip, projectRoot)
                 } catch (e: IOException) {
                     LOG.severe("unexpected problem extracting project file from zip")
                     return Result.createFailingResult("", "Problems processing zip file.")
                 }
                 val keyStoreFile = File(projectRoot, KEYSTORE_FILE_NAME)
-                var keyStorePath: String? = keyStoreFile.getPath()
+                var keyStorePath: String? = keyStoreFile.path
                 if (!keyStoreFile.exists()) {
                     keyStorePath = createKeyStore(userName, projectRoot, KEYSTORE_FILE_NAME)
                     saveKeystore = true
@@ -67,12 +78,12 @@ class ProjectBuilder {
                 val console = PrintStream(output)
                 val errors = ByteArrayOutputStream()
                 val userErrors = PrintStream(errors)
-                val componentTypes = getComponentTypes(sourceFiles, project.getAssetsDirectory())
+                val componentTypes = getComponentTypes(sourceFiles, project.assetsDirectory)
                 if (isForCompanion) {
                     componentTypes.addAll(allComponentTypes)
                 }
-                if (extraExtensions != null) {
-                    System.err.println("Including extension: " + Arrays.toString(extraExtensions))
+                if (extraExtensions.isNotEmpty()) {
+                    System.err.println("Including extension: $extraExtensions")
                     Collections.addAll(componentTypes, extraExtensions)
                 }
                 val componentBlocks = getComponentBlocks(sourceFiles)
@@ -87,25 +98,19 @@ class ProjectBuilder {
                 userErrors.close()
 
                 // Retrieve compiler messages and convert to HTML and log
-                val srcPath: String = projectRoot.getAbsolutePath().toString() + "/" + PROJECT_DIRECTORY + "/../src/"
-                val messages = processCompilerOutput(
-                    output.toString(PathUtil.DEFAULT_CHARSET),
-                    srcPath
-                )
+                val srcPath: String = "${projectRoot.absolutePath}/$PROJECT_DIRECTORY/../src/"
+                val messages = processCompilerOutput(output.toString(PathUtil.DEFAULT_CHARSET), srcPath)
                 if (success) {
                     // Locate output file
                     var fileName = outputFileName
                     if (fileName == null) {
-                        fileName = project.getProjectName().toString() + if (isAab) ".aab" else ".apk"
+                        fileName = project.projectName.toString() + if (isAab) ".aab" else ".apk"
                     }
-                    val outputFile = File(
-                        projectRoot,
-                        "build/deploy/$fileName"
-                    )
+                    val outputFile = File(projectRoot, "build/deploy/$fileName")
                     if (!outputFile.exists()) {
                         LOG.warning("Young Android build - $outputFile does not exist")
                     } else {
-                        outputApk = File(outputDir, outputFile.getName())
+                        outputApk = File(outputDir, outputFile.name)
                         Files.copy(outputFile, outputApk)
                         if (saveKeystore) {
                             outputKeystore = File(outputDir, KEYSTORE_FILE_NAME)
@@ -120,7 +125,7 @@ class ProjectBuilder {
 
                 // Note (ralph):  deleteRecursively has been removed from the guava-11.0.1 lib
                 // Replacing with deleteDirectory, which is supposed to delete the entire directory.
-                FileUtils.deleteQuietly(File(projectRoot.getCanonicalPath()))
+                FileUtils.deleteQuietly(File(projectRoot.canonicalPath))
             }
         } catch (e: Exception) {
             e.printStackTrace()
@@ -129,15 +134,15 @@ class ProjectBuilder {
     }
 
     @Throws(IOException::class)
-    private fun extractProjectFiles(inputZip: ZipFile?, projectRoot: File): ArrayList<String> {
-        val projectFileNames: ArrayList<String> = Lists.newArrayList()
-        val inputZipEnumeration: Enumeration<out ZipEntry?> = inputZip.entries()
+    private fun extractProjectFiles(inputZip: ZipFile, projectRoot: File): ArrayList<String> {
+        val projectFileNames: ArrayList<String> = arrayListOf()
+        val inputZipEnumeration: Enumeration<out ZipEntry> = inputZip.entries()
         while (inputZipEnumeration.hasMoreElements()) {
             val zipEntry: ZipEntry = inputZipEnumeration.nextElement()
             val extractedInputStream: InputStream = inputZip.getInputStream(zipEntry)
             val extractedFile = File(projectRoot, zipEntry.getName())
-            LOG.info("extracting " + extractedFile.getAbsolutePath().toString() + " from input zip")
-            Files.createParentDirs(extractedFile) // Do I need this?
+            LOG.info("extracting " + extractedFile.absolutePath.toString() + " from input zip")
+            extractedFile.mkdirs()
             Files.copy(
                 object : InputSupplier<InputStream?>() {
                     @get:Throws(IOException::class)
@@ -146,7 +151,7 @@ class ProjectBuilder {
                 },
                 extractedFile
             )
-            projectFileNames.add(extractedFile.getPath())
+            projectFileNames.add(extractedFile.path)
         }
         return projectFileNames
     }
@@ -155,12 +160,12 @@ class ProjectBuilder {
    * Loads the project properties file of a Young Android project.
    */
     private fun getProjectProperties(projectRoot: File): Project {
-        return Project(projectRoot.getAbsolutePath().toString() + "/" + PROJECT_PROPERTIES_FILE_NAME)
+        return Project("${projectRoot.absolutePath}/$PROJECT_PROPERTIES_FILE_NAME")
     }
 
     companion object {
         // Logging support
-        private val LOG: Logger = Logger.getLogger(ProjectBuilder::class.java.getName())
+        private val LOG: Logger = Logger.getLogger(ProjectBuilder::class.java.name)
         private const val MAX_COMPILER_MESSAGE_LENGTH = 160
 
         // Project folder prefixes
@@ -168,13 +173,12 @@ class ProjectBuilder {
         // appengine/src/com/google/appinventor/server/project/youngandroid/YoungAndroidProjectService
         // They should probably be in some place shared with the server
         private const val PROJECT_DIRECTORY = "youngandroidproject"
-        private const val PROJECT_PROPERTIES_FILE_NAME = PROJECT_DIRECTORY + "/" +
-                "project.properties"
+        private const val PROJECT_PROPERTIES_FILE_NAME = "$PROJECT_DIRECTORY/project.properties"
         private val KEYSTORE_FILE_NAME: String = YoungAndroidConstants.PROJECT_KEYSTORE_LOCATION
         private val FORM_PROPERTIES_EXTENSION: String = YoungAndroidConstants.FORM_PROPERTIES_EXTENSION
         private val YAIL_EXTENSION: String = YoungAndroidConstants.YAIL_EXTENSION
         private val CODEBLOCKS_SOURCE_EXTENSION: String = YoungAndroidConstants.CODEBLOCKS_SOURCE_EXTENSION
-        private val ALL_COMPONENT_TYPES: String = Compiler.RUNTIME_FILES_DIR.toString() + "simple_components.txt"
+        private val ALL_COMPONENT_TYPES: String = "${Compiler.RUNTIME_FILES_DIR}simple_components.txt"
 
         /**
          * Creates a new directory beneath the system's temporary directory (as
@@ -192,7 +196,7 @@ class ProjectBuilder {
          */
         private fun createNewTempDir(): File {
             val baseDir = File(System.getProperty("java.io.tmpdir"))
-            val baseNamePrefix: String = System.currentTimeMillis().toString() + "_" + Math.random() + "-"
+            val baseNamePrefix = "${System.currentTimeMillis()}_${Math.random()}-"
             val TEMP_DIR_ATTEMPTS = 10000
             for (counter in 0 until TEMP_DIR_ATTEMPTS) {
                 val tempDir = File(baseDir, baseNamePrefix + counter)
@@ -204,15 +208,13 @@ class ProjectBuilder {
                 }
             }
             throw IllegalStateException(
-                "Failed to create directory within "
-                        + TEMP_DIR_ATTEMPTS + " attempts (tried "
-                        + baseNamePrefix + "0 to " + baseNamePrefix + (TEMP_DIR_ATTEMPTS - 1) + ')'
+                "Failed to create directory within $TEMP_DIR_ATTEMPTS attempts (tried ${baseNamePrefix}0 to $baseNamePrefix${TEMP_DIR_ATTEMPTS - 1})"
             )
         }
 
         @get:Throws(IOException::class)
         private val allComponentTypes: Set<String>
-            private get() {
+            get() {
                 val compSet: Set<String> = Sets.newHashSet()
                 val components: Array<String> = Resources.toString(
                     ProjectBuilder::class.java.getResource(ALL_COMPONENT_TYPES), Charsets.UTF_8
@@ -224,9 +226,9 @@ class ProjectBuilder {
             }
 
         @Throws(IOException::class, JSONException::class)
-        private fun getComponentTypes(files: List<String>, assetsDir: File): Set<String> {
+        private fun getComponentTypes(files: List<String>, assetsDir: File): MutableSet<String> {
             val nameTypeMap = createNameTypeMap(assetsDir)
-            val componentTypes: Set<String> = Sets.newHashSet()
+            val componentTypes = mutableSetOf<String>()
             for (f in files) {
                 if (f.endsWith(".scm")) {
                     val scmFile = File(f)
@@ -255,26 +257,29 @@ class ProjectBuilder {
          */
         @Throws(IOException::class)
         private fun getComponentBlocks(files: List<String>): Map<String?, Set<String>> {
-            val result: Map<String?, Set<String>> = HashMap()
+            val result: Map<String, MutableSet<String>> = mutableMapOf()
             for (f in files) {
-                if (f.endsWith(".bky")) {
-                    val bkyFile = File(f)
-                    val bkyContent: String = Files.toString(bkyFile, StandardCharsets.UTF_8)
-                    for (entry in FormPropertiesAnalyzer.getComponentBlocksFromBlocksFile(bkyContent).entrySet()) {
-                        if (result.containsKey(entry.getKey())) {
-                            result[entry.getKey()].addAll(entry.getValue())
-                        } else {
-                            result.put(entry.getKey(), entry.getValue())
+                when {
+                    f.endsWith(".bky") -> {
+                        val bkyFile = File(f)
+                        val bkyContent: String = Files.toString(bkyFile, StandardCharsets.UTF_8)
+                        for (entry in FormPropertiesAnalyzer.getComponentBlocksFromBlocksFile(bkyContent).entrySet()) {
+                            if (result.containsKey(entry.getKey())) {
+                                result[entry.getKey()]?.addAll(entry.getValue())
+                            } else {
+                                result[entry.getKey()] = entry.getValue()
+                            }
                         }
                     }
-                } else if (f.endsWith(".scm")) {
-                    val scmFile = File(f)
-                    val scmContent: String = Files.toString(scmFile, StandardCharsets.UTF_8)
-                    for (entry in FormPropertiesAnalyzer.getComponentBlocksFromSchemeFile(scmContent).entrySet()) {
-                        if (result.containsKey(entry.getKey())) {
-                            result[entry.getKey()].addAll(entry.getValue())
-                        } else {
-                            result.put(entry.getKey(), entry.getValue())
+                    f.endsWith(".scm") -> {
+                        val scmFile = File(f)
+                        val scmContent: String = Files.toString(scmFile, StandardCharsets.UTF_8)
+                        for (entry in FormPropertiesAnalyzer.getComponentBlocksFromSchemeFile(scmContent).entrySet()) {
+                            if (result.containsKey(entry.getKey())) {
+                                result[entry.getKey()]?.addAll(entry.getValue())
+                            } else {
+                                result.put(entry.getKey(), entry.getValue())
+                            }
                         }
                     }
                 }
@@ -310,10 +315,7 @@ class ProjectBuilder {
             if (!extCompsDir.exists()) {
                 return nameTypeMap
             }
-            for (extCompDir in extCompsDir.listFiles()) {
-                if (!extCompDir.isDirectory()) {
-                    continue
-                }
+            extCompsDir.walk().filter { it.isDirectory }.forEach { extCompDir ->
                 var extCompJsonFile = File(extCompDir, "component.json")
                 if (extCompJsonFile.exists()) {
                     val extCompJson = JSONObject(
@@ -347,48 +349,46 @@ class ProjectBuilder {
         }
 
         @Throws(IOException::class)
-        fun createKeyStore(userName: String?, projectRoot: File, keystoreFileName: String?): String? {
-            val keyStoreFile = File(projectRoot.getPath(), keystoreFileName)
+        fun createKeyStore(userName: String, projectRoot: File, keystoreFileName: String): String? {
+            val keyStoreFile = File(projectRoot.path, keystoreFileName)
 
             /* Note: must expire after October 22, 2033, to be in the Android
-    * marketplace.  Android docs recommend "10000" as the expiration # of
-    * days.
-    *
-    * For DNAME, US may not the right country to assign it to.
-    */
+            * marketplace.  Android docs recommend "10000" as the expiration # of
+            * days.
+            *
+            * For DNAME, US may not the right country to assign it to.
+            */
             val keytoolCommandline = arrayOf(
-                System.getProperty("java.home").toString() + "/bin/keytool",
+                "${System.getProperty("java.home")}/bin/keytool",
                 "-genkey",
-                "-keystore", keyStoreFile.getAbsolutePath(),
+                "-keystore", keyStoreFile.absolutePath,
                 "-alias", "AndroidKey",
                 "-keyalg", "RSA",
-                "-dname", "CN=" + quotifyUserName(userName) + ", O=AppInventor for Android, C=US",
+                "-dname", "CN=${quotifyUserName(userName)}, O=AppInventor for Android, C=US",
                 "-validity", "10000",
                 "-storepass", "android",
                 "-keypass", "android"
             )
             if (Execution.execute(null, keytoolCommandline, System.out, System.err)) {
                 if (keyStoreFile.length() > 0) {
-                    return keyStoreFile.getAbsolutePath()
+                    return keyStoreFile.absolutePath
                 }
             }
             return null
         }
 
-        @VisibleForTesting
         fun getTypesFromScm(scm: String): Set<String> {
             return FormPropertiesAnalyzer.getComponentTypesFromFormFile(scm)
         }
 
-        @VisibleForTesting
-        fun processCompilerOutput(output: String, srcPath: String?): String {
+        fun processCompilerOutput(output: String, srcPath: String): String {
             // First, remove references to the temp source directory from the messages.
             var messages: String = output.replace(srcPath, "")
 
             // Then, format warnings and errors nicely.
             try {
                 // Split the messages by \n and process each line separately.
-                val lines: Array<String> = messages.split("\n")
+                val lines: List<String> = messages.split("\n")
                 val pattern: Pattern = Pattern.compile("(.*?):(\\d+):\\d+: (error|warning)?:? ?(.*?)")
                 val sb = StringBuilder()
                 var skippedErrorOrWarning = false
@@ -400,7 +400,7 @@ class ProjectBuilder {
                         var spanClass: String
                         // Scanner messages do not contain either 'error' or 'warning'.
                         // I treat them as errors because they prevent compilation.
-                        if ("warning".equals(matcher.group(3))) {
+                        if ("warning" == matcher.group(3)) {
                             kind = "WARNING"
                             spanClass = "compiler-WarningMarker"
                         } else {
@@ -418,9 +418,7 @@ class ProjectBuilder {
                         if (filename.endsWith(YoungAndroidConstants.YAIL_EXTENSION)) {
                             skippedErrorOrWarning = false
                             sb.append(
-                                "<div><span class='" + spanClass + "'>" + kind + "</span>: " +
-                                        StringUtils.escape(filename) + " line " + lineNumber + ": " +
-                                        StringUtils.escape(text) + "</div>"
+                                "<div><span class='$spanClass'>$kind</span>: ${StringUtils.escape(filename)} line $lineNumber: ${StringUtils.escape(text)}</div>"
                             )
                         } else {
                             // The error/warning is in runtime.scm. Don't append it to the StringBuilder.
@@ -428,7 +426,7 @@ class ProjectBuilder {
                         }
 
                         // Log the message, first truncating it if it is too long.
-                        if (text.length() > MAX_COMPILER_MESSAGE_LENGTH) {
+                        if (text.length > MAX_COMPILER_MESSAGE_LENGTH) {
                             text = text.substring(0, MAX_COMPILER_MESSAGE_LENGTH)
                         }
                     } else {
@@ -460,16 +458,15 @@ class ProjectBuilder {
             return messages
         }
 
-        /*
-   * Adds quotes around the given userName and encodes embedded quotes as \".
-   */
-        private fun quotifyUserName(userName: String?): String {
-            Preconditions.checkNotNull(userName)
-            val length: Int = userName!!.length()
+        /**
+       * Adds quotes around the given userName and encodes embedded quotes as \".
+       */
+        private fun quotifyUserName(userName: String): String {
+            val length: Int = userName.length
             val sb = StringBuilder(length + 2)
             sb.append('"')
             for (i in 0 until length) {
-                val ch: Char = userName.charAt(i)
+                val ch: Char = userName[i]
                 if (ch == '"') {
                     sb.append('\\').append(ch)
                 } else {

@@ -6,10 +6,19 @@
 package com.google.appinventor.buildserver
 
 import com.google.appinventor.common.version.GitBuildId
+import me.pavi2410.buildserver.constants
+import org.json.JSONException
+import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import java.io.*
+import java.lang.Integer.max
+import java.lang.management.ManagementFactory
+import java.lang.management.MemoryMXBean
+import java.nio.file.Files
 import java.util.zip.ZipEntry
+import java.util.zip.ZipFile
 import java.util.zip.ZipOutputStream
+import kotlin.system.exitProcess
 
 /**
  * Top level class for exposing the building of App Inventor APK files as a RESTful web service.
@@ -71,36 +80,6 @@ class BuildServer {
         }
     }
 
-    internal class CommandLineOptions {
-        @Option(name = "--shutdownToken", usage = "Token needed to shutdown the server remotely.")
-        var shutdownToken: String? = null
-
-        @Option(name = "--childProcessRamMb", usage = "Maximum ram that can be used by a child processes, in MB.")
-        var childProcessRamMb = 2048
-
-        @Option(
-            name = "--maxSimultaneousBuilds",
-            usage = "Maximum number of builds that can run in parallel. O means unlimited."
-        )
-        var maxSimultaneousBuilds = 0 // The default is unlimited.
-
-        @Option(name = "--port", usage = "The port number to bind to on the local machine.")
-        var port = 9990
-
-        @Option(
-            name = "--requiredHosts",
-            usage = "If specified, a list of hosts which are permitted to use this BuildServer, other the server is open to all.",
-            handler = StringArrayOptionHandler::class
-        )
-        var requiredHosts: Array<String>? = null
-
-        @Option(name = "--debug", usage = "Turn on debugging, which enables the non-async calls of the buildserver.")
-        var debug = false
-
-        @Option(name = "--dexCacheDir", usage = "the directory to cache the pre-dexed libraries")
-        var dexCacheDir: String? = null
-    }
-
     // The input zip file. It will be deleted in cleanUp.
     private var inputZip: File? = null
 
@@ -133,8 +112,7 @@ class BuildServer {
     @Produces(MediaType.TEXT_PLAIN)
     @Throws(IOException::class)
     fun health(): Response {
-        val shut = shutdownState
-        return when (shut) {
+        return when (shutdownState) {
             ShutdownState.UP -> {
                 LOG.info("Healthcheck: UP")
                 Response.ok("ok", MediaType.TEXT_PLAIN_TYPE).build()
@@ -170,7 +148,7 @@ class BuildServer {
     @Produces(MediaType.TEXT_HTML)
     @Throws(IOException::class)
     fun `var`(): Response {
-        val variables: Map<String, String> = LinkedHashMap<String, String>()
+        val variables: Map<String, String> = LinkedHashMap()
 
         // Runtime
         val runtimeBean: RuntimeMXBean = ManagementFactory.getRuntimeMXBean()
@@ -226,7 +204,7 @@ class BuildServer {
             variables.put("maximum-simultaneous-build-tasks-allowed", max.toString() + "")
         }
         variables.put("completed-build-tasks", buildExecutor!!.getCompletedTaskCount().toString() + "")
-        maximumActiveBuildTasks = Math.max(maximumActiveBuildTasks, buildExecutor!!.getActiveTaskCount())
+        maximumActiveBuildTasks = max(maximumActiveBuildTasks, buildExecutor!!.getActiveTaskCount())
         variables.put("maximum-simultaneous-build-tasks-occurred", maximumActiveBuildTasks.toString() + "")
         variables.put("active-build-tasks", buildExecutor!!.getActiveTaskCount().toString() + "")
         val html = StringBuilder()
@@ -338,7 +316,7 @@ class BuildServer {
         inputZip.deleteOnExit() // In case build server is killed before cleanUp executes.
         if (!commandLineOptions.debug) return Response.status(Response.Status.FORBIDDEN).type(MediaType.TEXT_PLAIN_TYPE)
             .entity("Entry point unavailable unless debugging.").build()
-        val isAab: Boolean = constants.AAB_EXTENSION_VALUE.equals(ext)
+        val isAab: Boolean = constants.AAB_EXTENSION_VALUE == ext
         return try {
             build(userName, zipFile, isAab, null)
             val attachedFilename: String = outputApk.getName()
@@ -446,7 +424,7 @@ class BuildServer {
         val isAab: Boolean = Main.AAB_EXTENSION_VALUE.equals(ext)
 
         //for the request for update part, the file should be empty
-        if (inputZip.length() === 0L) {
+        if (inputZip.length() == 0L) {
             cleanUp()
         } else {
             if (shutdownState == ShutdownState.DOWN) {
@@ -457,7 +435,7 @@ class BuildServer {
             if (commandLineOptions.requiredHosts != null) {
                 var oktoproceed = false
                 for (host in commandLineOptions.requiredHosts!!) {
-                    if (host.equals(requesting_host)) {
+                    if (host == requesting_host) {
                         oktoproceed = true
                         break
                     }
@@ -474,8 +452,8 @@ class BuildServer {
                 LOG.info("requiredHosts is not set, no restriction on callback url.")
             }
             asyncBuildRequests.incrementAndGet()
-            if (gitBuildVersion != null && !gitBuildVersion.isEmpty()) {
-                if (!gitBuildVersion.equals(GitBuildId.getVersion())) {
+            if (gitBuildVersion != null && gitBuildVersion.isNotEmpty()) {
+                if (gitBuildVersion != GitBuildId.getVersion()) {
                     // This build server is not compatible with the App Inventor instance. Log this as severe
                     // so the owner of the build server will know about it.
                     val errorMessage =
@@ -493,8 +471,7 @@ class BuildServer {
                 }
             }
             val buildTask: Runnable = object : Runnable() {
-                @Override
-                fun run() {
+                override fun run() {
                     val count: Int = buildCount.incrementAndGet()
                     try {
                         LOG.info("START NEW BUILD $count")
@@ -580,7 +557,7 @@ class BuildServer {
             Files.copy(outputApk, zipOutputStream)
             successfulBuildRequests.getAndIncrement()
         } else {
-            LOG.severe("Build ${buildCount.get()} Failed: ${buildResult.getResult()} ${buildResult.getError()}")
+            LOG.severe("Build ${buildCount.get()} Failed: ${buildResult.result} ${buildResult.error}")
             failedBuildRequests.getAndIncrement()
         }
         zipOutputStream.putNextEntry(ZipEntry("build.out"))
@@ -595,11 +572,11 @@ class BuildServer {
     @Throws(JSONException::class)
     private fun genBuildOutput(buildResult: Result): String {
         val buildOutputJsonObj = JSONObject()
-        buildOutputJsonObj.put("result", buildResult.getResult())
-        buildOutputJsonObj.put("error", buildResult.getError())
-        buildOutputJsonObj.put("output", buildResult.getOutput())
-        if (buildResult.getFormName() != null) {
-            buildOutputJsonObj.put("formName", buildResult.getFormName())
+        buildOutputJsonObj.put("result", buildResult.result)
+        buildOutputJsonObj.put("error", buildResult.error)
+        buildOutputJsonObj.put("output", buildResult.output)
+        if (buildResult.formName != null) {
+            buildOutputJsonObj.put("formName", buildResult.formName)
         }
         return buildOutputJsonObj.toString()
     }
@@ -620,24 +597,18 @@ class BuildServer {
             false,
             false,
             false,
-            null,
+            emptyList(),
             commandLineOptions.childProcessRamMb,
             commandLineOptions.dexCacheDir,
             reporter,
             isAab
         )
-        val buildOutput: String = buildResult.getOutput()
-        LOG.info("Build output: $buildOutput")
-        val buildError: String = buildResult.getError()
-        LOG.info("Build error output: $buildError")
+        LOG.info("Build output: ${buildResult.output}")
+        LOG.info("Build error output: ${buildResult.error}")
         outputApk = projectBuilder.getOutputApk()
-        if (outputApk != null) {
-            outputApk.deleteOnExit() // In case build server is killed before cleanUp executes.
-        }
+        outputApk?.deleteOnExit()
         outputKeystore = projectBuilder.getOutputKeystore()
-        if (outputKeystore != null) {
-            outputKeystore.deleteOnExit() // In case build server is killed before cleanUp executes.
-        }
+        outputKeystore?.deleteOnExit()
         checkMemory()
         return buildResult
     }
@@ -671,7 +642,7 @@ class BuildServer {
     // Only do this scheme if we are not unlimited
     // (unlimited == 0) and allow more then 10 max builds
     private val shutdownState: ShutdownState
-        private get() {
+        get() {
             if (turningOnTime != 0L && System.currentTimeMillis() > turningOnTime && turningOnTime > shuttingTime) {
                 turningOnTime = 0
                 shuttingTime = 0
@@ -774,7 +745,7 @@ class BuildServer {
             } catch (e: CmdLineException) {
                 LOG.severe(e.getMessage())
                 cmdLineParser.printUsage(System.err)
-                System.exit(1)
+                exitProcess(1)
             }
 
             // Add a Shutdown Hook. In a container swarm, the swarm orchestrator
@@ -787,8 +758,7 @@ class BuildServer {
             // hard kill a container for a period of time (say 15 minutes) to give
             // running jobs a chance to finish.
             Runtime.getRuntime().addShutdownHook(object : Thread() {
-                @Override
-                fun run() {
+                override fun run() {
                     shuttingTime = System.currentTimeMillis()
                     if (buildExecutor == null) {
                         /* We haven't really started up yet... */
@@ -798,14 +768,14 @@ class BuildServer {
                         val tasks: Int = buildExecutor.getActiveTaskCount()
                         if (tasks <= 0) {
                             try {
-                                Thread.sleep(10000) // One final wait so people can get
+                                sleep(10000) // One final wait so people can get
                                 // their barcode
                             } catch (e: InterruptedException) {
                             }
                             return
                         }
                         try {
-                            Thread.sleep(1000) // Wait one second and try again
+                            sleep(1000) // Wait one second and try again
                         } catch (e: InterruptedException) {
                             // XXX
                         }

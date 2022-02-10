@@ -4,7 +4,12 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 package com.google.appinventor.buildserver.util
 
-import java.io.File
+import sun.misc.IOUtils
+import java.io.*
+import java.util.*
+import java.util.zip.ZipEntry
+import java.util.zip.ZipFile
+import javax.xml.xpath.XPathExpressionException
 
 /**
  * AARLibrary encapsulates important information about Android Archive (AAR) files so that they
@@ -57,40 +62,32 @@ class AARLibrary(aar: File) {
     /**
      * Set of all descendants of the resources hierarchy.
      */
-    private val resources: Set<File> = HashSet()
+    private val resources = mutableSetOf<File>()
 
     /**
      * Set of all assets found under the assets/ directory.
      */
-    private val assets: Set<File> = HashSet()
+    private val assets = mutableSetOf<File>()
 
     /**
      * Set of all JAR files found under the libs/ directory.
      */
-    private val libs: Set<File> = HashSet()
+    private val libs = mutableSetOf<File>()
 
     /**
      * Set of all dynamically linked libraries found under the jni/ directory.
      */
-    private val jni: Set<File> = HashSet()
+    private val jni = mutableSetOf<File>()
 
     /**
      * File wrapper around a zip stream to allow extracting the package name from the AndroidManifest.
      */
-    private class ZipEntryWrapper internal constructor(stream: InputStream) : BaseFileWrapper() {
-        private val stream: InputStream
-
-        @get:Throws(StreamException::class)
-        @get:Override
-        override var contents: InputStream
+    private class ZipEntryWrapper(private val stream: InputStream) : BaseFileWrapper() {
+        var contents: InputStream?
             get() = stream
             set(contents) {
                 super.contents = contents
             }
-
-        init {
-            this.stream = stream
-        }
     }
 
     val file: File
@@ -131,9 +128,9 @@ class AARLibrary(aar: File) {
      * @throws IOException if reading the input stream fails.
      */
     @Throws(IOException::class)
-    private fun extractPackageName(zip: ZipFile?): String {
+    private fun extractPackageName(zip: ZipFile): String {
         val entry: ZipEntry = zip.getEntry("AndroidManifest.xml")
-            ?: throw IllegalArgumentException("${zip.getName()} does not contain AndroidManifest.xml")
+            ?: throw IllegalArgumentException("${zip.name} does not contain AndroidManifest.xml")
         return try {
             val wrapper = ZipEntryWrapper(zip.getInputStream(entry))
             // the following call will automatically close the input stream opened above
@@ -152,25 +149,25 @@ class AARLibrary(aar: File) {
      */
     private fun catalog(file: File) {
         when {
-            MANIFEST.equals(file.getName()) -> {
+            MANIFEST == file.name -> {
                 manifest = file
             }
-            CLASSES.equals(file.getName()) -> {
+            CLASSES == file.name -> {
                 classes = file
             }
-            R_TEXT.equals(file.getName()) -> {
+            R_TEXT == file.name -> {
                 rtxt = file
             }
-            file.getPath().startsWith(RES_DIR) -> {
+            file.path.startsWith(RES_DIR) -> {
                 resources.add(file)
             }
-            file.getPath().startsWith(ASSET_DIR) -> {
+            file.path.startsWith(ASSET_DIR) -> {
                 assets.add(file)
             }
-            file.getPath().startsWith(LIBS_DIR) -> {
+            file.path.startsWith(LIBS_DIR) -> {
                 libs.add(file)
             }
-            file.getPath().startsWith(JNI_DIR) -> {
+            file.path.startsWith(JNI_DIR) -> {
                 jni.add(file)
             }
         }
@@ -196,17 +193,17 @@ class AARLibrary(aar: File) {
             }
             var input: InputStream? = null
             var output: OutputStream? = null
-            val i: Enumeration<out ZipEntry?> = zip.entries()
+            val i: Enumeration<out ZipEntry> = zip.entries()
             while (i.hasMoreElements()) {
                 val entry: ZipEntry = i.nextElement()
-                val target = File(basedir, entry.getName())
-                if (entry.isDirectory() && !target.exists() && !target.mkdirs()) {
-                    throw IOException("Unable to create directory ${path.getAbsolutePath()}")
-                } else if (!entry.isDirectory()) {
+                val target = File(basedir, entry.name)
+                if (entry.isDirectory && !target.exists() && !target.mkdirs()) {
+                    throw IOException("Unable to create directory ${path.absolutePath}")
+                } else if (!entry.isDirectory) {
                     try {
                         // Need to make sure the parent directory is present. Files can appear
                         // in a ZIP (AAR) file without an explicit directory object
-                        val parentDir: File = target.getParentFile()
+                        val parentDir: File = target.parentFile
                         if (!parentDir.exists()) {
                             parentDir.mkdirs()
                         }
@@ -221,7 +218,7 @@ class AARLibrary(aar: File) {
                 }
             }
             resdir = File(basedir, "res")
-            if (!resdir.exists()) {
+            if (!resdir!!.exists()) {
                 resdir = null
             }
         } finally {
@@ -229,21 +226,16 @@ class AARLibrary(aar: File) {
         }
     }
 
-    override fun equals(o: Object?): Boolean {
-        return if (this === o) {
-            true
-        } else if (o == null) {
-            false
-        } else if (getClass() !== o.getClass()) {
-            false
-        } else {
-            file.equals((o as AARLibrary).file)
+    override fun equals(other: Any?): Boolean {
+        return when {
+            this === other -> true
+            other == null -> false
+            this.javaClass !== other.javaClass -> false
+            else -> file == (other as AARLibrary).file
         }
     }
 
-    override fun hashCode(): Int {
-        return aarPath.hashCode()
-    }
+    override fun hashCode(): Int = aarPath.hashCode()
 
     companion object {
         private const val MANIFEST = "AndroidManifest.xml"
@@ -262,7 +254,7 @@ class AARLibrary(aar: File) {
      */
     init {
         aarPath = aar
-        val temp: String = aar.getName()
-        simpleName = temp.substring(0, temp.length() - 4)
+        val temp: String = aar.name
+        simpleName = temp.substring(0, temp.length - 4)
     }
 }

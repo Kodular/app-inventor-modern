@@ -5,7 +5,11 @@
 // http://www.apache.org/licenses/LICENSE-2.0
 package com.google.appinventor.buildserver
 
-import com.google.common.base.Preconditions
+import java.io.File
+import java.io.FileInputStream
+import java.io.IOException
+import java.util.*
+import java.util.logging.Logger
 
 /**
  * This class gives access to Young Android project files.
@@ -15,7 +19,7 @@ import com.google.common.base.Preconditions
  *
  * @author markf@google.com (Mark Friedman)
  */
-class Project(file: File) {
+class Project {
     /**
      * Representation of a source file containing its name and file location.
      */
@@ -25,29 +29,20 @@ class Project(file: File) {
          *
          * @return  class name of source file
          */
-        // Qualified name of the class defined by the source file
-        val qualifiedName: String, file: File
+        val qualifiedName: String, // Qualified name of the class defined by the source file
+        private val file: File // File descriptor for the source
     ) {
-
-        // File descriptor for the source
-        private val file: File
 
         /**
          * Returns a file descriptor for the source file
          *
          * @return  file descriptor
          */
-        fun getFile(): File {
-            return file
-        }
-
-        init {
-            this.file = file
-        }
+        fun getFile(): File = file
     }
 
     // Table containing project properties
-    private var properties: Properties? = null
+    private val properties = Properties()
 
     /**
      * Returns the project directory. This directory contains the project.properties file.
@@ -55,20 +50,29 @@ class Project(file: File) {
      * @return  project directory
      */
     // Project directory. This directory contains the project.properties file.
-    var projectDir: String? = null
+    private var projectDir: String? = null
 
     // Build output directory override, or null.
     private var buildDirOverride: String? = null
 
     // List of source files
-    private var sources: List<SourceDescriptor>? = null
+    private var sources: MutableList<SourceDescriptor>? = null
+
 
     /**
      * Creates a new Young Android project descriptor.
      *
-     * @param projectFile  path to project file
+     * @param file  project file
      */
-    constructor(projectFile: String?) : this(File(projectFile)) {}
+    constructor(file: File) {
+        val parentFile: File = requireNotNull(file.parentFile)
+        projectDir = parentFile.absolutePath
+
+        // Load project file
+        FileInputStream(file).use {
+            properties.load(it)
+        }
+    }
 
     /**
      * Creates a new Young Android project descriptor.
@@ -76,7 +80,7 @@ class Project(file: File) {
      * @param projectFile  path to project file
      * @param buildDirOverride  build output directory override, or null
      */
-    constructor(projectFile: String?, buildDirOverride: String?) : this(File(projectFile)) {
+    constructor(projectFile: String, buildDirOverride: String? = null) : this(File(projectFile)) {
         this.buildDirOverride = buildDirOverride
     }
     /**
@@ -161,12 +165,7 @@ class Project(file: File) {
      * @return useslocation property
      */
     val usesLocation: String
-        get() {
-            var retval: String = properties.getProperty(USESLOCATIONTAG)
-            if (retval == null) // Older Projects won't have this
-                retval = "False"
-            return retval
-        }//The non-English character set can't be shown properly and need special encoding.
+        get() = properties.getProperty(USESLOCATIONTAG, "False")
     /**
      * Sets the app name.
      *
@@ -178,16 +177,7 @@ class Project(file: File) {
      * @return  app name
      */
     var aName: String?
-        get() {
-            //The non-English character set can't be shown properly and need special encoding.
-            var appName: String = properties.getProperty(ANAMETAG)
-            try {
-                appName = String(appName.getBytes("ISO-8859-1"), "UTF-8")
-            } catch (e: UnsupportedEncodingException) {
-            } catch (e: NullPointerException) {
-            }
-            return appName
-        }
+        get() = properties.getProperty(ANAMETAG)
         set(aname) {
             properties.setProperty(ANAMETAG, aname)
         }
@@ -254,32 +244,24 @@ class Project(file: File) {
      * @return  build output directory
      */
     val buildDirectory: File
-        get() = if (buildDirOverride != null) {
-            File(buildDirOverride)
-        } else File(
-            projectDir,
-            properties.getProperty(BUILDTAG)
-        )
+        get() = if (buildDirOverride != null) File(buildDirOverride) else File(projectDir, properties.getProperty(BUILDTAG))
 
     /*
    * Recursively visits source directories and adds found Young Android source files to the list of
    * source files.
    */
     private fun visitSourceDirectories(root: String, file: File) {
-        if (file.isDirectory()) {
+        if (file.isDirectory) {
             // Recursively visit nested directories.
-            for (child in file.list()) {
-                visitSourceDirectories(root, File(file, child))
+            file.walk().filter { it.isFile }.forEach { child ->
+                visitSourceDirectories(root, child)
             }
         } else {
             // Add Young Android source files to the source file list
-            if (file.getName().endsWith(YoungAndroidConstants.YAIL_EXTENSION)) {
-                val absName: String = file.getAbsolutePath()
-                val name: String = absName.substring(
-                    root.length() + 1, absName.length() -
-                            YoungAndroidConstants.YAIL_EXTENSION.length()
-                )
-                sources.add(SourceDescriptor(name.replace(File.separatorChar, '.'), file))
+            if (file.name.endsWith(YoungAndroidConstants.YAIL_EXTENSION)) {
+                val absName: String = file.absolutePath
+                val name: String = absName.substring(root.length + 1, absName.length - YoungAndroidConstants.YAIL_EXTENSION.length)
+                sources?.add(SourceDescriptor(name.replace(File.separatorChar, '.'), file))
             }
         }
     }
@@ -292,11 +274,11 @@ class Project(file: File) {
     fun getSources(): List<SourceDescriptor> {
         // Lazily discover source files
         if (sources == null) {
-            sources = Lists.newArrayList()
+            sources = mutableListOf()
             val sourceTag: String = properties.getProperty(SOURCETAG)
             for (sourceDir in sourceTag.split(",")) {
                 val dir = File(projectDir + File.separatorChar + sourceDir)
-                visitSourceDirectories(dir.getAbsolutePath(), dir)
+                visitSourceDirectories(dir.absolutePath, dir)
             }
         }
         return sources!!
@@ -340,29 +322,6 @@ class Project(file: File) {
         private const val COLOR_ACCENTTAG = "color.accent"
 
         // Logging support
-        private val LOG: Logger = Logger.getLogger(Project::class.java.getName())
-    }
-
-    /**
-     * Creates a new Young Android project descriptor.
-     *
-     * @param file  project file
-     */
-    init {
-        try {
-            val parentFile: File = Preconditions.checkNotNull(file.getParentFile())
-            projectDir = parentFile.getAbsolutePath()
-
-            // Load project file
-            properties = Properties()
-            val `in` = FileInputStream(file)
-            try {
-                properties.load(`in`)
-            } finally {
-                `in`.close()
-            }
-        } catch (e: IOException) {
-            e.printStackTrace()
-        }
+        private val LOG: Logger = Logger.getLogger(Project::class.java.name)
     }
 }

@@ -111,7 +111,7 @@ class AARLibraries(generated: File) : HashSet<AARLibrary?>() {
      * @return  the list of all resource sets available across the AAR libraries.
      */
     private val resourceSets: List<Any>
-        private get() {
+        get() {
             val resourceSets: List<ResourceSet> = ArrayList()
             for (library in this) {
                 if (library.getResDirectory() != null) {

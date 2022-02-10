@@ -12,19 +12,19 @@ import com.android.utils.ILogger
  * @author ewpatton@mit.edu (Evan W. Patton)
  */
 class BaseLogger : ILogger {
-    override fun error(t: Throwable?, msgFormat: String, vararg args: Object?) {
+    override fun error(t: Throwable?, msgFormat: String, vararg args: Any?) {
         System.err.println("[ERROR] $msgFormat")
     }
 
-    override fun warning(msgFormat: String, vararg args: Object?) {
+    override fun warning(msgFormat: String, vararg args: Any?) {
         System.err.println("[WARN] $msgFormat")
     }
 
-    override fun info(msgFormat: String, vararg args: Object?) {
+    override fun info(msgFormat: String, vararg args: Any?) {
         System.err.println("[INFO] $msgFormat")
     }
 
-    override fun verbose(msgFormat: String, vararg args: Object?) {
+    override fun verbose(msgFormat: String, vararg args: Any?) {
         System.err.println("[DEBUG] $msgFormat")
     }
 }

@@ -6,6 +6,10 @@
 package com.google.appinventor.buildserver
 
 import com.google.appinventor.buildserver.util.AabZipper
+import java.io.*
+import java.util.concurrent.Callable
+import java.util.zip.ZipEntry
+import java.util.zip.ZipInputStream
 
 /**
  * This Callable class will convert the compiled files into an Android App Bundle.
@@ -19,7 +23,7 @@ import com.google.appinventor.buildserver.util.AabZipper
  * - assets/
  * - lib/
  */
-class AabCompiler(out: PrintStream?, buildDir: File?, mx: Int) : Callable<Boolean?> {
+class AabCompiler(out: PrintStream, buildDir: File, mx: Int) : Callable<Boolean?> {
     private val out: PrintStream?
     private val buildDir: File?
     private val mx: Int
@@ -93,9 +97,7 @@ class AabCompiler(out: PrintStream?, buildDir: File?, mx: Int) : Callable<Boolea
             return false
         }
         out.println("________Signing bundle")
-        return if (!jarsigner()) {
-            false
-        } else true
+        return jarsigner()
     }
 
     private fun createStructure(): Boolean {
@@ -111,9 +113,9 @@ class AabCompiler(out: PrintStream?, buildDir: File?, mx: Int) : Callable<Boolea
         val dexFiles: Array<File> = File(originalDexDir).listFiles()
         if (dexFiles != null) {
             for (dex in dexFiles) {
-                if (dex.isFile()) {
+                if (dex.isFile) {
                     try {
-                        Files.move(dex, File(aab.dexDir, dex.getName()))
+                        Files.move(dex, File(aab.dexDir, dex.name))
                     } catch (e: IOException) {
                         e.printStackTrace()
                         return false
@@ -126,7 +128,7 @@ class AabCompiler(out: PrintStream?, buildDir: File?, mx: Int) : Callable<Boolea
         if (libFiles != null) {
             for (lib in libFiles) {
                 try {
-                    Files.move(lib, File(createDir(aab.root, "lib"), lib.getName()))
+                    Files.move(lib, File(createDir(aab.root, "lib"), lib.name))
                 } catch (e: IOException) {
                     e.printStackTrace()
                     return false
@@ -141,20 +143,20 @@ class AabCompiler(out: PrintStream?, buildDir: File?, mx: Int) : Callable<Boolea
             ZipInputStream(FileInputStream(aab.protoApk)).use { `is` ->
                 var entry: ZipEntry
                 val buffer = ByteArray(1024)
-                while (`is`.getNextEntry().also { entry = it } != null) {
-                    val n: String = entry.getName()
+                while (`is`.nextEntry.also { entry = it } != null) {
+                    val n: String = entry.name
                     var f: File? = null
                     if (n.equals("AndroidManifest.xml")) {
                         f = File(aab.manifestDir, n)
                     } else if (n.equals("resources.pb")) {
                         f = File(aab.root, n)
                     } else if (n.startsWith("assets")) {
-                        f = File(aab.assetsDir, n.substring("assets".length()))
+                        f = File(aab.assetsDir, n.substring("assets".length))
                     } else if (n.startsWith("res")) {
-                        f = File(aab.resDir, n.substring("res".length()))
+                        f = File(aab.resDir, n.substring("res".length))
                     }
                     if (f != null) {
-                        f.getParentFile().mkdirs()
+                        f.parentFile.mkdirs()
                         try {
                             FileOutputStream(f).use { fos ->
                                 var len: Int
@@ -181,20 +183,20 @@ class AabCompiler(out: PrintStream?, buildDir: File?, mx: Int) : Callable<Boolea
         if (!AabZipper.zipBundle(aab.root, aab.base, aab.root.getName() + File.separator)) {
             return false
         }
-        val bundletoolCommandLine: List<String> = ArrayList<String>()
-        bundletoolCommandLine.add(System.getProperty("java.home").toString() + "/bin/java")
+        val bundletoolCommandLine: List<String> = ArrayList()
+        bundletoolCommandLine.add("${System.getProperty("java.home")}/bin/java")
         bundletoolCommandLine.add("-jar")
-        bundletoolCommandLine.add("-mx" + mx + "M")
+        bundletoolCommandLine.add("-mx${mx}M")
         bundletoolCommandLine.add(bundletool)
         bundletoolCommandLine.add("build-bundle")
-        bundletoolCommandLine.add("--modules=" + aab.base)
+        bundletoolCommandLine.add("--modules=${aab.base}")
         bundletoolCommandLine.add("--output=$deploy")
-        val bundletoolBuildCommandLine: Array<String> = bundletoolCommandLine.toArray(arrayOfNulls<String>(0))
+        val bundletoolBuildCommandLine: Array<String> = bundletoolCommandLine.toTypedArray()
         return Execution.execute(null, bundletoolBuildCommandLine, System.out, System.err)
     }
 
     private fun jarsigner(): Boolean {
-        val jarsignerCommandLine: List<String> = ArrayList<String>()
+        val jarsignerCommandLine: List<String> = ArrayList()
         jarsignerCommandLine.add(jarsigner)
         jarsignerCommandLine.add("-sigalg")
         jarsignerCommandLine.add("SHA256withRSA")

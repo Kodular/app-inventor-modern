@@ -6,6 +6,25 @@
 package com.google.appinventor.buildserver
 
 import com.android.ide.common.internal.AaptCruncher
+import com.google.appinventor.buildserver.util.AARLibraries
+import com.google.appinventor.buildserver.util.AARLibrary
+import org.json.JSONArray
+import org.json.JSONException
+import org.json.JSONObject
+import org.json.JSONTokener
+import java.awt.Graphics2D
+import java.awt.Image
+import java.awt.image.BufferedImage
+import java.io.*
+import java.util.*
+import java.util.concurrent.*
+import java.util.logging.Level
+import java.util.logging.Logger
+import java.util.zip.ZipEntry
+import java.util.zip.ZipInputStream
+import javax.imageio.ImageIO
+import kotlin.math.roundToLong
+import kotlin.system.exitProcess
 
 /**
  * Main entry point for the YAIL compiler.
@@ -20,7 +39,7 @@ import com.android.ide.common.internal.AaptCruncher
  * accomodate the new annotations for adding <activity> and <receiver>
  * elements.]
 </receiver></activity> */
-class Compiler @VisibleForTesting internal constructor(
+class Compiler internal constructor(
     project: Project?,
     compTypes: Set<String?>?,
     compBlocks: Map<String?, Set<String?>?>,
@@ -34,17 +53,17 @@ class Compiler @VisibleForTesting internal constructor(
     dexCacheDir: String?,
     reporter: BuildServer.ProgressReporter?
 ) {
-    private val assetsNeeded: ConcurrentMap<String, Set<String>> = ConcurrentHashMap<String, Set<String>>()
-    private val activitiesNeeded: ConcurrentMap<String, Set<String>> = ConcurrentHashMap<String, Set<String>>()
-    private val metadataNeeded: ConcurrentMap<String, Set<String>> = ConcurrentHashMap<String, Set<String>>()
-    private val activityMetadataNeeded: ConcurrentMap<String, Set<String>> = ConcurrentHashMap<String, Set<String>>()
-    private val broadcastReceiversNeeded: ConcurrentMap<String, Set<String>> = ConcurrentHashMap<String, Set<String>>()
-    private val servicesNeeded: ConcurrentMap<String, Set<String>> = ConcurrentHashMap<String, Set<String>>()
-    private val contentProvidersNeeded: ConcurrentMap<String, Set<String>> = ConcurrentHashMap<String, Set<String>>()
-    private val libsNeeded: ConcurrentMap<String, Set<String>> = ConcurrentHashMap<String, Set<String>>()
-    private val nativeLibsNeeded: ConcurrentMap<String, Set<String>> = ConcurrentHashMap<String, Set<String>>()
-    private val permissionsNeeded: ConcurrentMap<String, Set<String>> = ConcurrentHashMap<String, Set<String>>()
-    private val minSdksNeeded: ConcurrentMap<String, Set<String>> = ConcurrentHashMap<String, Set<String>>()
+    private val assetsNeeded: ConcurrentMap<String, Set<String>> = ConcurrentHashMap()
+    private val activitiesNeeded: ConcurrentMap<String, Set<String>> = ConcurrentHashMap()
+    private val metadataNeeded: ConcurrentMap<String, Set<String>> = ConcurrentHashMap()
+    private val activityMetadataNeeded: ConcurrentMap<String, Set<String>> = ConcurrentHashMap()
+    private val broadcastReceiversNeeded: ConcurrentMap<String, Set<String>> = ConcurrentHashMap()
+    private val servicesNeeded: ConcurrentMap<String, Set<String>> = ConcurrentHashMap()
+    private val contentProvidersNeeded: ConcurrentMap<String, Set<String>> = ConcurrentHashMap()
+    private val libsNeeded: ConcurrentMap<String, Set<String>> = ConcurrentHashMap()
+    private val nativeLibsNeeded: ConcurrentMap<String, Set<String>> = ConcurrentHashMap()
+    private val permissionsNeeded: ConcurrentMap<String, Set<String>> = ConcurrentHashMap()
+    private val minSdksNeeded: ConcurrentMap<String, Set<String>> = ConcurrentHashMap()
     private val uniqueLibsNeeded: Set<String> = Sets.newHashSet()
     private val conditionals: ConcurrentMap<String, Map<String, Map<String, Set<String>>>> = ConcurrentHashMap()
 
@@ -92,7 +111,7 @@ class Compiler @VisibleForTesting internal constructor(
     //             should remain for the time being because otherwise we'll break
     //             extensions currently using @SimpleBroadcastReceiver.
     private val componentBroadcastReceiver: ConcurrentMap<String, Set<String>> =
-        ConcurrentHashMap<String, Set<String>>()
+        ConcurrentHashMap()
 
     companion object {
         /**
@@ -103,9 +122,9 @@ class Compiler @VisibleForTesting internal constructor(
         var currentProgress = 10
 
         // Kawa and DX processes can use a lot of memory. We only launch one Kawa or DX process at a time.
-        private val SYNC_KAWA_OR_DX: Object = Object()
+        private val SYNC_KAWA_OR_DX: Any = Object()
         private val SLASH: String = File.separator
-        private val SLASHREGEX = if (File.separatorChar === '\\') "\\\\" else "/"
+        private val SLASHREGEX = if (File.separatorChar == '\\') "\\\\" else "/"
         private val COLON: String = File.pathSeparator
         private const val ZIPSLASH = "/"
         const val RUNTIME_FILES_DIR = "/" + "files" + "/"
@@ -146,8 +165,7 @@ class Compiler @VisibleForTesting internal constructor(
    * ./gradlew :app:dependencies --configuration releaseRuntimeClasspath --console=plain | \
    *     awk 'BEGIN {FS="--- "} {print $2}' | cut -d : -f2 | sort -u
    */
-        private val CRITICAL_JARS: Set<String> = HashSet(
-            Arrays.asList(
+        private val CRITICAL_JARS: Set<String> = setOf(
                 RUNTIME_FILES_DIR + "appcompat.jar",
                 RUNTIME_FILES_DIR + "collection.jar",
                 RUNTIME_FILES_DIR + "core.jar",
@@ -178,7 +196,6 @@ class Compiler @VisibleForTesting internal constructor(
                 RUNTIME_FILES_DIR + "swiperefreshlayout.jar",
                 RUNTIME_FILES_DIR + "versionedparcelable.jar",
                 RUNTIME_FILES_DIR + "viewpager.jar"
-            )
         )
         private const val LINUX_AAPT_TOOL = "/tools/linux/aapt"
         private const val LINUX_ZIPALIGN_TOOL = "/tools/linux/zipalign"
@@ -192,8 +209,7 @@ class Compiler @VisibleForTesting internal constructor(
         private const val WINDOWS_AAPT2_TOOL = "/tools/windows/aapt2"
         private const val BUNDLETOOL_JAR = RUNTIME_FILES_DIR + "bundletool.jar"
 
-        @VisibleForTesting
-        val YAIL_RUNTIME = RUNTIME_FILES_DIR + "runtime.scm"
+        const val YAIL_RUNTIME = RUNTIME_FILES_DIR + "runtime.scm"
 
         /**
          * Map used to hold the names and paths of resources that we've written out
@@ -201,15 +217,43 @@ class Compiler @VisibleForTesting internal constructor(
          * Don't use this map directly. Please call getResource() with one of the
          * constants above to get the (temp file) path to a resource.
          */
-        private val resources: ConcurrentMap<String, File> = ConcurrentHashMap<String, File>()
+        private val resources: ConcurrentMap<String, File> = ConcurrentHashMap()
 
         // TODO(user,lizlooney): i18n here and in lines below that call String.format(...)
         private const val COMPILATION_ERROR = "Error: Your build failed due to an error when compiling %s.\n"
-        private const val ERROR_IN_STAGE = "Error: Your build failed due to an error in the %s stage, " +
-                "not because of an error in your program.\n"
+        private const val ERROR_IN_STAGE =
+            "Error: Your build failed due to an error in the %s stage, not because of an error in your program.\n"
         private const val ICON_ERROR = "Error: Your build failed because %s cannot be used as the application icon.\n"
         private const val NO_USER_CODE_ERROR = "Error: No user code exists.\n"
-        private val LOG: Logger = Logger.getLogger(Compiler::class.java.getName())
+        private val LOG: Logger = Logger.getLogger(Compiler::class.java.name)
+
+
+        /**
+         * Creates a new YAIL compiler.
+         *
+         * @param project  project to build
+         * @param compTypes component types used in the project
+         * @param compBlocks component types mapped to blocks used in project
+         * @param out  stdout stream for compiler messages
+         * @param err  stderr stream for compiler messages
+         * @param userErrors stream to write user-visible error messages
+         * @param childProcessMaxRam  maximum RAM for child processes, in MBs.
+         */
+        init {
+            this.project = project
+            this.compBlocks = compBlocks
+            prepareCompTypes(compTypes)
+            readBuildInfo()
+            this.out = out
+            this.err = err
+            this.userErrors = userErrors
+            this.isForCompanion = isForCompanion
+            this.isForEmulator = isForEmulator
+            this.includeDangerousPermissions = includeDangerousPermissions
+            childProcessRamMb = childProcessMaxRam
+            this.dexCacheDir = dexCacheDir
+            this.reporter = reporter
+        }
 
         /**
          * Write out a style definition customized with the given colors.
@@ -230,12 +274,12 @@ class Compiler @VisibleForTesting internal constructor(
             out.write("<item name=\"colorPrimary\">@color/colorPrimary</item>\n")
             out.write("<item name=\"colorPrimaryDark\">@color/colorPrimaryDark</item>\n")
             out.write("<item name=\"colorAccent\">@color/colorAccent</item>\n")
-            val holo = sdk >= 11 && sdk < 21
+            val holo = sdk in 11..20
             var needsClassicSwitch = false
-            if (!parent.equals("android:Theme")) {
+            if (parent != "android:Theme") {
                 out.write("<item name=\"windowActionBar\">true</item>\n")
                 out.write("<item name=\"android:windowActionBar\">true</item>\n") // Honeycomb ActionBar
-                if (parent.contains("Holo") || holo) {
+                if ("Holo" in parent || holo) {
                     out.write("<item name=\"android:actionBarStyle\">@style/AIActionBar</item>\n")
                     out.write("<item name=\"actionBarStyle\">@style/AIActionBar</item>\n")
                 }
@@ -273,12 +317,7 @@ class Compiler @VisibleForTesting internal constructor(
             out.write("<item name=\"android:titleTextStyle\">@style/AIActionBarTitle</item>\n")
             out.write("</style>\n")
             out.write("<style name=\"AIActionBarTitle\" parent=\"android:TextAppearance.Holo.Widget.ActionBar.Title\">\n")
-            out.write(
-                """
-    <item name="android:textColor">${if (blackText) "#000" else "#fff"}</item>
-    
-    """.trimIndent()
-            )
+            out.write("""<item name="android:textColor">${if (blackText) "#000" else "#fff"}</item>""")
             out.write("</style>\n")
         }
 
@@ -292,7 +331,7 @@ class Compiler @VisibleForTesting internal constructor(
             out.write("<item name=\"colorPrimary\">@color/colorPrimary</item>\n")
             out.write("<item name=\"colorPrimaryDark\">@color/colorPrimaryDark</item>\n")
             out.write("<item name=\"colorAccent\">@color/colorAccent</item>\n")
-            if (parent.contains("Holo")) {
+            if ("Holo" in parent) {
                 // workaround for weird window border effect
                 out.write("<item name=\"android:windowBackground\">@android:color/transparent</item>\n")
                 out.write("<item name=\"android:gravity\">center</item>\n")
@@ -336,9 +375,7 @@ class Compiler @VisibleForTesting internal constructor(
             )
 
             // Set initial progress to 0%
-            if (reporter != null) {
-                reporter.report(0)
-            }
+            reporter?.report(0)
             compiler.generateAssets()
             compiler.generateActivities()
             compiler.generateMetadata()
@@ -358,7 +395,7 @@ class Compiler @VisibleForTesting internal constructor(
             compiler.generateBroadcastReceiver()
 
             // Create build directory.
-            val buildDir: File = createDir(project.getBuildDirectory())
+            val buildDir: File = createDir(project.buildDirectory)
 
             // Prepare application icon.
             out.println("________Preparing application icon")
@@ -375,9 +412,9 @@ class Compiler @VisibleForTesting internal constructor(
 
             // Create list of mipmaps for all icon types with respective sizes
             val mipmapDirectoriesForIcons: List<File> =
-                Arrays.asList(mipmapMdpi, mipmapHdpi, mipmapXhdpi, mipmapXxhdpi, mipmapXxxhdpi)
-            val standardICSizesForMipmaps: List<Integer> = Arrays.asList(48, 72, 96, 144, 192)
-            val foregroundICSizesForMipmaps: List<Integer> = Arrays.asList(108, 162, 216, 324, 432)
+                listOf(mipmapMdpi, mipmapHdpi, mipmapXhdpi, mipmapXxhdpi, mipmapXxxhdpi)
+            val standardICSizesForMipmaps: MutableList<Int> = mutableListOf(48, 72, 96, 144, 192)
+            val foregroundICSizesForMipmaps: MutableList<Int> = mutableListOf(108, 162, 216, 324, 432)
             if (!compiler.prepareApplicationIcon(
                     File(drawableDir, "ya.png"),
                     mipmapDirectoriesForIcons,
@@ -387,9 +424,7 @@ class Compiler @VisibleForTesting internal constructor(
             ) {
                 return false
             }
-            if (reporter != null) {
-                reporter.report(15) // Have to call directly because we are in a
-            } // Static context
+            reporter?.report(15) // Static context
 
             // Create anim directory and animation xml files
             out.println("________Creating animation xml")
@@ -450,9 +485,7 @@ class Compiler @VisibleForTesting internal constructor(
             if (!compiler.writeAndroidManifest(manifestFile)) {
                 return false
             }
-            if (reporter != null) {
-                reporter.report(20)
-            }
+            reporter?.report(20)
 
             // Insert native libraries
             out.println("________Attaching native libraries")
@@ -475,8 +508,8 @@ class Compiler @VisibleForTesting internal constructor(
             // Invoke aapt to package everything up
             out.println("________Invoking AAPT")
             val deployDir: File = createDir(buildDir, "deploy")
-            val tmpPackageName: String = deployDir.getAbsolutePath() + SLASH +
-                    project.getProjectName().toString() + "." + if (isAab) "apk" else "ap_"
+            val tmpPackageName: String =
+                "${deployDir.absolutePath}$SLASH${project.projectName.toString()}.${if (isAab) "apk" else "ap_"}"
             val srcJavaDir: File = createDir(buildDir, "generated/src")
             val rJavaDir: File = createDir(buildDir, "generated/symbols")
             if (isAab) {
@@ -491,24 +524,20 @@ class Compiler @VisibleForTesting internal constructor(
                     return false
                 }
             }
-            if (reporter != null) {
-                reporter.report(30)
-            }
+            reporter?.report(30)
 
             // Create class files.
             out.println("________Compiling source files")
             val classesDir: File = createDir(buildDir, "classes")
             val tmpDir: File = createDir(buildDir, "tmp")
-            val dexedClassesDir: String = tmpDir.getAbsolutePath()
+            val dexedClassesDir: String = tmpDir.absolutePath
             if (!compiler.generateRClasses(classesDir)) {
                 return false
             }
             if (!compiler.generateClasses(classesDir)) {
                 return false
             }
-            if (reporter != null) {
-                reporter.report(35)
-            }
+            reporter?.report(35)
 
             // Invoke dx on class files
             out.println("________Invoking DX")
@@ -530,9 +559,7 @@ class Compiler @VisibleForTesting internal constructor(
             if (!compiler.runMultidex(classesDir, dexedClassesDir)) {
                 return false
             }
-            if (reporter != null) {
-                reporter.report(85)
-            }
+            reporter?.report(85)
             if (isAab) {
                 if (!compiler.bundleTool(
                         buildDir,
@@ -549,17 +576,12 @@ class Compiler @VisibleForTesting internal constructor(
             } else {
                 // Seal the apk with ApkBuilder
                 out.println("________Invoking ApkBuilder")
-                var fileName = outputFileName
-                if (fileName == null) {
-                    fileName = project.getProjectName().toString() + ".apk"
-                }
-                val apkAbsolutePath: String = deployDir.getAbsolutePath() + SLASH + fileName
+                var fileName = outputFileName ?: "${project.projectName}.apk"
+                val apkAbsolutePath: String = deployDir.absolutePath + SLASH + fileName
                 if (!compiler.runApkBuilder(apkAbsolutePath, tmpPackageName, dexedClassesDir)) {
                     return false
                 }
-                if (reporter != null) {
-                    reporter.report(95)
-                }
+                reporter?.report(95)
 
                 // ZipAlign the apk file
                 out.println("________ZipAligning the apk file")
@@ -573,13 +595,8 @@ class Compiler @VisibleForTesting internal constructor(
                     return false
                 }
             }
-            if (reporter != null) {
-                reporter.report(100)
-            }
-            out.println(
-                "Build finished in " +
-                        ((System.currentTimeMillis() - start) / 1000.0).toString() + " seconds"
-            )
+            reporter?.report(100)
+            out.println("Build finished in ${((System.currentTimeMillis() - start) / 1000.0)} seconds")
             return true
         }
 
@@ -592,7 +609,7 @@ class Compiler @VisibleForTesting internal constructor(
         @Synchronized
         fun getResource(resourcePath: String): String {
             return try {
-                var file: File = resources.get(resourcePath)
+                var file: File? = resources[resourcePath]
                 if (file == null) {
                     val basename: String = PathUtil.basename(resourcePath)
                     var prefix: String
@@ -605,20 +622,20 @@ class Compiler @VisibleForTesting internal constructor(
                         prefix = basename
                         suffix = ""
                     }
-                    while (prefix.length() < 3) {
-                        prefix = prefix + "_"
+                    while (prefix.length < 3) {
+                        prefix += "_"
                     }
                     file = File.createTempFile(prefix, suffix)
                     file.setExecutable(true)
                     file.deleteOnExit()
-                    file.getParentFile().mkdirs()
+                    file.parentFile.mkdirs()
                     Files.copy(
                         Resources.newInputStreamSupplier(Compiler::class.java.getResource(resourcePath)),
                         file
                     )
-                    resources.put(resourcePath, file)
+                    resources[resourcePath] = file
                 }
-                file.getAbsolutePath()
+                file.absolutePath
             } catch (e: NullPointerException) {
                 throw IllegalStateException("Unable to find required library: $resourcePath", e)
             } catch (e: IOException) {
@@ -679,68 +696,43 @@ class Compiler @VisibleForTesting internal constructor(
             return dir
         }
 
-        private fun basename(path: String?): String {
-            return File(path).getName()
-        }
+        private fun basename(path: String): String = File(path).name
 
         private fun getExtAssetPath(extCompDir: String?, assetName: String): String {
             return extCompDir + File.separator + ASSET_DIR_NAME + File.separator + assetName
         }
 
         init {
-            val aars: List<String> = ArrayList()
-            val jars: List<String> = ArrayList()
+            val aars = mutableListOf<String>()
+            val jars = mutableListOf<String>()
             try {
-                BufferedReader(
-                    InputStreamReader(
-                        Compiler::class.java.getResourceAsStream(
-                            RUNTIME_FILES_DIR + "aars.txt"
-                        )
-                    )
-                ).use { `in` ->
-                    var line: String
-                    while (`in`.readLine().also { com.google.appinventor.buildserver.line = it } != null) {
-                        if (!com.google.appinventor.buildserver.line.isEmpty()) {
-                            com.google.appinventor.buildserver.aars.add(com.google.appinventor.buildserver.line)
-                        } else {
-                            break
-                        }
+                val res = Compiler::class.java.getResourceAsStream("${RUNTIME_FILES_DIR}aars.txt")
+                BufferedReader(InputStreamReader(res))
+                    .forEachLine { line ->
+                        aars.add(line)
                     }
-                }
             } catch (e: IOException) {
                 System.err.println("Fatal error on startup reading aars.txt")
                 e.printStackTrace()
-                System.exit(1)
+                exitProcess(1)
             }
-            SUPPORT_AARS = com.google.appinventor.buildserver.aars.toArray(arrayOfNulls<String>(0))
+            SUPPORT_AARS = aars.toTypedArray()
             try {
-                BufferedReader(
-                    InputStreamReader(
-                        Compiler::class.java.getResourceAsStream(
-                            RUNTIME_FILES_DIR + "jars.txt"
-                        )
-                    )
-                ).use { `in` ->
-                    var line: String
-                    while (`in`.readLine().also { com.google.appinventor.buildserver.line = it } != null) {
-                        if (!com.google.appinventor.buildserver.line.isEmpty()) {
-                            com.google.appinventor.buildserver.jars.add(RUNTIME_FILES_DIR + com.google.appinventor.buildserver.line)
-                        } else {
-                            break
-                        }
+                val res = Compiler::class.java.getResourceAsStream("${RUNTIME_FILES_DIR}jars.txt")
+                BufferedReader(InputStreamReader(res))
+                    .forEachLine { line ->
+                        jars.add(line)
                     }
-                }
             } catch (e: IOException) {
                 System.err.println("Fatal error on startup reading jars.txt")
                 e.printStackTrace()
-                System.exit(1)
+                exitProcess(1)
             }
-            SUPPORT_JARS = com.google.appinventor.buildserver.jars.toArray(arrayOfNulls<String>(0))
+            SUPPORT_JARS = jars.toTypedArray()
         }
     }
 
-    private val childProcessRamMb // Maximum ram that can be used by a child processes, in MB.
-            : Int
+    private val childProcessRamMb: Int // Maximum ram that can be used by a child processes, in MB.
     private val isForCompanion: Boolean
     private val isForEmulator: Boolean
     private val includeDangerousPermissions: Boolean
@@ -748,15 +740,12 @@ class Compiler @VisibleForTesting internal constructor(
     private val out: PrintStream
     private val err: PrintStream
     private val userErrors: PrintStream
-    private var libsDir // The directory that will contain any native libraries for packaging
-            : File? = null
+    private var libsDir: File? = null // The directory that will contain any native libraries for packaging
     private val dexCacheDir: String?
     private var simpleCompsBuildInfo: JSONArray? = null
     private var extCompsBuildInfo: JSONArray? = null
-    private var simpleCompTypes // types needed by the project
-            : Set<String>? = null
-    private var extCompTypes // types needed by the project
-            : Set<String>? = null
+    private var simpleCompTypes: Set<String>? = null // types needed by the project
+    private var extCompTypes: Set<String>? = null // types needed by the project
 
     /**
      * A list of the dex files created by [.runMultidex].
@@ -766,26 +755,24 @@ class Compiler @VisibleForTesting internal constructor(
     /**
      * Mapping from type name to path in project to minimize tests against the file system.
      */
-    private val extTypePathCache: Map<String, String> = HashMap<String, String>()
-    private val reporter // Used to report progress of the build
-            : BuildServer.ProgressReporter?
+    private val extTypePathCache: Map<String, String> = HashMap()
+    private val reporter: BuildServer.ProgressReporter? // Used to report progress of the build
 
     /*
    * Generate the set of Android permissions needed by this project.
    */
-    @VisibleForTesting
     fun generatePermissions() {
         try {
             loadJsonInfo(permissionsNeeded, ComponentDescriptorConstants.PERMISSIONS_TARGET)
             if (project != null) {    // Only do this if we have a project (testing doesn't provide one :-( ).
-                LOG.log(Level.INFO, "usesLocation = " + project.getUsesLocation())
-                if (project.getUsesLocation().equals("True")) { // Add location permissions if any WebViewer requests it
+                LOG.log(Level.INFO, "usesLocation = " + project.usesLocation)
+                if (project.usesLocation == "True") { // Add location permissions if any WebViewer requests it
                     val locationPermissions: Set<String> = Sets.newHashSet() // via a Property.
                     // See ProjectEditor.recordLocationSettings()
                     locationPermissions.add("android.permission.ACCESS_FINE_LOCATION")
                     locationPermissions.add("android.permission.ACCESS_COARSE_LOCATION")
                     locationPermissions.add("android.permission.ACCESS_MOCK_LOCATION")
-                    permissionsNeeded.put("com.google.appinventor.components.runtime.WebViewer", locationPermissions)
+                    permissionsNeeded["com.google.appinventor.components.runtime.WebViewer"] = locationPermissions
                 }
             }
         } catch (e: IOException) {
@@ -797,12 +784,12 @@ class Compiler @VisibleForTesting internal constructor(
             e.printStackTrace()
             userErrors.print(String.format(ERROR_IN_STAGE, "Permissions"))
         }
-        mergeConditionals(conditionals.get(ComponentDescriptorConstants.PERMISSIONS_TARGET), permissionsNeeded)
+        mergeConditionals(conditionals[ComponentDescriptorConstants.PERMISSIONS_TARGET], permissionsNeeded)
         var n = 0
         for (type in permissionsNeeded.keySet()) {
-            n += permissionsNeeded.get(type).size()
+            n += permissionsNeeded[type].size
         }
-        System.out.println("Permissions needed, n = $n")
+        println("Permissions needed, n = $n")
     }
 
     /**
@@ -870,34 +857,28 @@ class Compiler @VisibleForTesting internal constructor(
     }
 
     // Just used for testing
-    @get:VisibleForTesting
     val permissions: Map<String, Set<String>>
         get() = permissionsNeeded
 
     // Just used for testing
-    @get:VisibleForTesting
     val broadcastReceivers: Map<String, Set<String>>
         get() = broadcastReceiversNeeded
 
     // Just used for testing
-    @get:VisibleForTesting
     val services: Map<String, Set<String>>
         get() = servicesNeeded
 
     // Just used for testing
-    @get:VisibleForTesting
     val contentProviders: Map<String, Set<String>>
         get() = contentProvidersNeeded
 
     // Just used for testing
-    @get:VisibleForTesting
     val activities: Map<String, Set<String>>
         get() = activitiesNeeded
 
     /*
    * Generate the set of Android libraries needed by this project.
    */
-    @VisibleForTesting
     fun generateLibNames() {
         try {
             loadJsonInfo(libsNeeded, ComponentDescriptorConstants.LIBRARIES_TARGET)
@@ -912,15 +893,14 @@ class Compiler @VisibleForTesting internal constructor(
         }
         var n = 0
         for (type in libsNeeded.keySet()) {
-            n += libsNeeded.get(type).size()
+            n += libsNeeded[type].size()
         }
-        System.out.println("Libraries needed, n = $n")
+        println("Libraries needed, n = $n")
     }
 
     /*
    * Generate the set of conditionally included libraries needed by this project.
    */
-    @VisibleForTesting
     fun generateNativeLibNames() {
         if (isForEmulator) {  // no libraries for emulator
             return
@@ -938,15 +918,14 @@ class Compiler @VisibleForTesting internal constructor(
         }
         var n = 0
         for (type in nativeLibsNeeded.keySet()) {
-            n += nativeLibsNeeded.get(type).size()
+            n += nativeLibsNeeded[type].size()
         }
-        System.out.println("Native Libraries needed, n = $n")
+        println("Native Libraries needed, n = $n")
     }
 
     /*
    * Generate the set of conditionally included assets needed by this project.
    */
-    @VisibleForTesting
     fun generateAssets() {
         try {
             loadJsonInfo(assetsNeeded, ComponentDescriptorConstants.ASSETS_TARGET)
@@ -961,15 +940,14 @@ class Compiler @VisibleForTesting internal constructor(
         }
         var n = 0
         for (type in assetsNeeded.keySet()) {
-            n += assetsNeeded.get(type).size()
+            n += assetsNeeded[type].size()
         }
-        System.out.println("Component assets needed, n = $n")
+        println("Component assets needed, n = $n")
     }
 
     /*
    * Generate the set of conditionally included activities needed by this project.
    */
-    @VisibleForTesting
     fun generateActivities() {
         try {
             loadJsonInfo(activitiesNeeded, ComponentDescriptorConstants.ACTIVITIES_TARGET)
@@ -984,15 +962,14 @@ class Compiler @VisibleForTesting internal constructor(
         }
         var n = 0
         for (type in activitiesNeeded.keySet()) {
-            n += activitiesNeeded.get(type).size()
+            n += activitiesNeeded[type].size()
         }
-        System.out.println("Component activities needed, n = $n")
+        println("Component activities needed, n = $n")
     }
 
     /**
      * Generate a set of conditionally included metadata needed by this project.
      */
-    @VisibleForTesting
     fun generateMetadata() {
         try {
             loadJsonInfo(metadataNeeded, ComponentDescriptorConstants.METADATA_TARGET)
@@ -1007,15 +984,14 @@ class Compiler @VisibleForTesting internal constructor(
         }
         var n = 0
         for (type in metadataNeeded.keySet()) {
-            n += metadataNeeded.get(type).size()
+            n += metadataNeeded[type].size()
         }
-        System.out.println("Component metadata needed, n = $n")
+        println("Component metadata needed, n = $n")
     }
 
     /**
      * Generate a set of conditionally included activity metadata needed by this project.
      */
-    @VisibleForTesting
     fun generateActivityMetadata() {
         try {
             loadJsonInfo(activityMetadataNeeded, ComponentDescriptorConstants.ACTIVITY_METADATA_TARGET)
@@ -1030,15 +1006,14 @@ class Compiler @VisibleForTesting internal constructor(
         }
         var n = 0
         for (type in activityMetadataNeeded.keySet()) {
-            n += activityMetadataNeeded.get(type).size()
+            n += activityMetadataNeeded[type].size()
         }
-        System.out.println("Component metadata needed, n = $n")
+        println("Component metadata needed, n = $n")
     }
 
     /*
    * Generate a set of conditionally included broadcast receivers needed by this project.
    */
-    @VisibleForTesting
     fun generateBroadcastReceivers() {
         try {
             loadJsonInfo(broadcastReceiversNeeded, ComponentDescriptorConstants.BROADCAST_RECEIVERS_TARGET)
@@ -1052,7 +1027,7 @@ class Compiler @VisibleForTesting internal constructor(
             userErrors.print(String.format(ERROR_IN_STAGE, "BroadcastReceivers"))
         }
         mergeConditionals(
-            conditionals.get(ComponentDescriptorConstants.BROADCAST_RECEIVERS_TARGET),
+            conditionals[ComponentDescriptorConstants.BROADCAST_RECEIVERS_TARGET],
             broadcastReceiversNeeded
         )
     }
@@ -1060,7 +1035,6 @@ class Compiler @VisibleForTesting internal constructor(
     /*
    * Generate a set of conditionally included services needed by this project.
    */
-    @VisibleForTesting
     fun generateServices() {
         try {
             loadJsonInfo(servicesNeeded, ComponentDescriptorConstants.SERVICES_TARGET)
@@ -1073,13 +1047,12 @@ class Compiler @VisibleForTesting internal constructor(
             e.printStackTrace()
             userErrors.print(String.format(ERROR_IN_STAGE, "Services"))
         }
-        mergeConditionals(conditionals.get(ComponentDescriptorConstants.SERVICES_TARGET), servicesNeeded)
+        mergeConditionals(conditionals[ComponentDescriptorConstants.SERVICES_TARGET], servicesNeeded)
     }
 
     /*
    * Generate a set of conditionally included content providers needed by this project.
    */
-    @VisibleForTesting
     fun generateContentProviders() {
         try {
             loadJsonInfo(contentProvidersNeeded, ComponentDescriptorConstants.CONTENT_PROVIDERS_TARGET)
@@ -1093,7 +1066,7 @@ class Compiler @VisibleForTesting internal constructor(
             userErrors.print(String.format(ERROR_IN_STAGE, "Content Providers"))
         }
         mergeConditionals(
-            conditionals.get(ComponentDescriptorConstants.CONTENT_PROVIDERS_TARGET),
+            conditionals[ComponentDescriptorConstants.CONTENT_PROVIDERS_TARGET],
             contentProvidersNeeded
         )
     }
@@ -1104,7 +1077,6 @@ class Compiler @VisibleForTesting internal constructor(
    *             that we don't break extensions currently using the
    *             @SimpleBroadcastReceiver annotation.
    */
-    @VisibleForTesting
     fun generateBroadcastReceiver() {
         try {
             loadJsonInfo(componentBroadcastReceiver, ComponentDescriptorConstants.BROADCAST_RECEIVER_TARGET)
@@ -1159,13 +1131,13 @@ class Compiler @VisibleForTesting internal constructor(
         val theme = if (project.getTheme() == null) "Classic" else project.getTheme()
         val actionbar: String = project.getActionBar()
         var parentTheme: String
-        val isClassicTheme = "Classic".equals(theme) || suffix.isEmpty() // Default to classic theme prior to SDK 11
+        val isClassicTheme = "Classic" == theme || suffix.isEmpty() // Default to classic theme prior to SDK 11
         var needsBlackTitleText = false
-        val holo = "-v11".equals(suffix) || "-v14".equals(suffix)
+        val holo = "-v11" == suffix || "-v14" == suffix
         if (isClassicTheme) {
             parentTheme = "android:Theme"
         } else {
-            if (suffix.equals("-v11")) {  // AppCompat needs SDK 14, so we explicitly name Holo for SDK 11 through 13
+            if (suffix == "-v11") {  // AppCompat needs SDK 14, so we explicitly name Holo for SDK 11 through 13
                 parentTheme = theme.replace("AppTheme", "android:Theme.Holo")
                 needsBlackTitleText = theme.contains("Light") && !theme.contains("DarkActionBar")
                 if (theme.contains("Light")) {
@@ -1286,10 +1258,7 @@ class Compiler @VisibleForTesting internal constructor(
         try {
             val out = BufferedWriter(OutputStreamWriter(FileOutputStream(adaptiveIconFile), "UTF-8"))
             out.write("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n")
-            out.write(
-                """<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android" >
-"""
-            )
+            out.write("""<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android" >""")
             out.write("<background android:drawable=\"@color/ic_launcher_background\" />\n")
             out.write("<foreground android:drawable=\"@mipmap/ic_launcher_foreground\" />\n")
             out.write("</adaptive-icon>\n")
@@ -1344,10 +1313,7 @@ class Compiler @VisibleForTesting internal constructor(
             // TODO(markf) Allow users to set versionCode and versionName attributes.
             // See http://developer.android.com/guide/publishing/publishing.html for
             // more info.
-            out.write(
-                """<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="$packageName" android:versionCode="$vCode" android:versionName="$vName" >
-"""
-            )
+            out.write("""<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="$packageName" android:versionCode="$vCode" android:versionName="$vName" >""")
 
             // If we are building the Wireless Debugger (AppInventorDebugger) add the uses-feature tag which
             // is used by the Google Play store to determine which devices the app is available for. By adding
@@ -1440,7 +1406,7 @@ class Compiler @VisibleForTesting internal constructor(
             // risk for App Inventor App end-users.
             out.write("android:debuggable=\"false\" ")
             // out.write("android:debuggable=\"true\" "); // DEBUGGING
-            if (aName.equals("")) {
+            if (aName == "") {
                 out.write("android:label=\"$projectName\" ")
             } else {
                 out.write("android:label=\"$aName\" ")
@@ -1467,7 +1433,7 @@ class Compiler @VisibleForTesting internal constructor(
             for (source in project!!.getSources()) {
                 val formClassName: String = source.getQualifiedName()
                 // String screenName = formClassName.substring(formClassName.lastIndexOf('.') + 1);
-                val isMain = formClassName.equals(mainClass)
+                val isMain = formClassName == mainClass
                 if (isMain) {
                     // The main activity of the application.
                     out.write("    <activity android:name=\".$className\" ")
@@ -1564,8 +1530,8 @@ class Compiler @VisibleForTesting internal constructor(
             subelements.addAll(contentProvidersNeeded.entrySet())
 
 
-            // If any component needs to register additional activities, 
-            // broadcast receivers, services or content providers, insert 
+            // If any component needs to register additional activities,
+            // broadcast receivers, services or content providers, insert
             // them into the manifest here.
             if (!subelements.isEmpty()) {
                 for (componentSubElSetPair in subelements) {
@@ -1595,7 +1561,7 @@ class Compiler @VisibleForTesting internal constructor(
             // Collect any legacy simple broadcast receivers
             val simpleBroadcastReceivers: Set<String> = Sets.newHashSet()
             for (componentType in componentBroadcastReceiver.keySet()) {
-                simpleBroadcastReceivers.addAll(componentBroadcastReceiver.get(componentType))
+                simpleBroadcastReceivers.addAll(componentBroadcastReceiver[componentType])
             }
 
             // The format for each legacy Broadcast Receiver in simpleBroadcastReceivers is
@@ -1665,7 +1631,7 @@ class Compiler @VisibleForTesting internal constructor(
         // Store the filenames, and their contents into a HashMap
         // so that we can easily add more, and also to iterate
         // through creating the files.
-        val files: Map<String, String> = HashMap<String, String>()
+        val files: Map<String, String> = HashMap()
         files.put("fadein.xml", AnimationXmlConstants.FADE_IN_XML)
         files.put("fadeout.xml", AnimationXmlConstants.FADE_OUT_XML)
         files.put("hold.xml", AnimationXmlConstants.HOLD_XML)
@@ -1720,8 +1686,8 @@ class Compiler @VisibleForTesting internal constructor(
             )
             if (dexFiles.size() > 1) {
                 for (f in dexFiles) {
-                    if (!f.getName().equals("classes.dex")) {
-                        apkBuilder.addFile(f, f.getName())
+                    if (!f.name.equals("classes.dex")) {
+                        apkBuilder.addFile(f, f.name)
                     }
                 }
             }
@@ -1752,16 +1718,16 @@ class Compiler @VisibleForTesting internal constructor(
     private fun generateClasses(classesDir: File): Boolean {
         try {
             val sources: List<Project.SourceDescriptor> = project!!.getSources()
-            val sourceFileNames: List<String> = Lists.newArrayListWithCapacity(sources.size())
-            val classFileNames: List<String> = Lists.newArrayListWithCapacity(sources.size())
+            val sourceFileNames: List<String> = Lists.newArrayListWithCapacity(sources.size)
+            val classFileNames: List<String> = Lists.newArrayListWithCapacity(sources.size)
             var userCodeExists = false
             for (source in sources) {
-                val sourceFileName: String = source.getFile().getAbsolutePath()
+                val sourceFileName: String = source.getFile().absolutePath
                 LOG.log(Level.INFO, "source file: $sourceFileName")
                 val srcIndex: Int =
-                    sourceFileName.indexOf(File.separator.toString() + ".." + File.separator + "src" + File.separator)
+                    sourceFileName.indexOf("${File.separator}..${File.separator}src${File.separator}")
                 val sourceFileRelativePath: String = sourceFileName.substring(srcIndex + 8)
-                val classFileName: String = (classesDir.getAbsolutePath().toString() + "/" + sourceFileRelativePath)
+                val classFileName: String = "${classesDir.absolutePath}/$sourceFileRelativePath"
                     .replace(YoungAndroidConstants.YAIL_EXTENSION, ".class")
 
                 // Check whether user code exists by seeing if a left parenthesis exists at the beginning of
@@ -1772,7 +1738,7 @@ class Compiler @VisibleForTesting internal constructor(
                     try {
                         while (fileReader.ready()) {
                             val c: Int = fileReader.read()
-                            if (c == '('.toInt()) {
+                            if (c == '('.code) {
                                 userCodeExists = true
                                 break
                             }
@@ -1802,7 +1768,7 @@ class Compiler @VisibleForTesting internal constructor(
             }
 
             // attach the jars of external comps
-            val addedExtJars: Set<String> = HashSet<String>()
+            val addedExtJars: Set<String> = HashSet()
             for (type in extCompTypes!!) {
                 val sourcePath = getExtCompDirPath(type) + SIMPLE_ANDROID_RUNTIME_JAR
                 if (!addedExtJars.contains(sourcePath)) {  // don't add multiple copies for bundled extensions
@@ -1814,7 +1780,7 @@ class Compiler @VisibleForTesting internal constructor(
 
             // Add component library names to classpath
             for (type in libsNeeded.keySet()) {
-                for (lib in libsNeeded.get(type)) {
+                for (lib in libsNeeded[type]) {
                     var sourcePath = ""
                     val pathSuffix = RUNTIME_FILES_DIR + lib
                     sourcePath = if (simpleCompTypes!!.contains(type)) {
@@ -1833,31 +1799,30 @@ class Compiler @VisibleForTesting internal constructor(
 
             // Add dependencies for classes.jar in any AAR libraries
             for (classesJar in explodedAarLibs.getClasses()) {
-                if (classesJar != null) {  // true for optimized AARs in App Inventor libs
-                    val abspath: String = classesJar.getAbsolutePath()
-                    uniqueLibsNeeded.add(abspath)
-                    classpath.append(abspath)
-                    classpath.append(COLON)
-                }
+                // true for optimized AARs in App Inventor libs
+                val abspath: String = classesJar.absolutePath
+                uniqueLibsNeeded.add(abspath)
+                classpath.append(abspath)
+                classpath.append(COLON)
             }
-            if (explodedAarLibs.size() > 0) {
+            if (explodedAarLibs.size > 0) {
                 classpath.append(explodedAarLibs.getOutputDirectory().getAbsolutePath())
                 classpath.append(COLON)
             }
             classpath.append(getResource(ANDROID_RUNTIME))
-            System.out.println("Libraries Classpath = $classpath")
+            println("Libraries Classpath = $classpath")
             val yailRuntime = getResource(YAIL_RUNTIME)
             val kawaCommandArgs: List<String> = Lists.newArrayList()
             val mx = childProcessRamMb - 200
             Collections.addAll(
-                kawaCommandArgs, System.getProperty("java.home").toString() + "/bin/java",
+                kawaCommandArgs, "${System.getProperty("java.home")}/bin/java",
                 "-Dfile.encoding=UTF-8",
                 "-mx" + mx + "M",
                 "-cp", classpath.toString(),
                 "kawa.repl",
                 "-f", yailRuntime,
-                "-d", classesDir.getAbsolutePath(),
-                "-P", Signatures.getPackageName(project.getMainClass()).toString() + ".",
+                "-d", classesDir.absolutePath,
+                "-P", Signatures.getPackageName(project.mainClass) + ".",
                 "-C"
             )
             // TODO(lizlooney) - we are currently using (and have always used) absolute paths for the
@@ -1867,7 +1832,7 @@ class Compiler @VisibleForTesting internal constructor(
             // root as the working directory for the Kawa compiler process.
             kawaCommandArgs.addAll(sourceFileNames)
             kawaCommandArgs.add(yailRuntime)
-            val kawaCommandLine: Array<String> = kawaCommandArgs.toArray(arrayOfNulls<String>(kawaCommandArgs.size()))
+            val kawaCommandLine: Array<String> = kawaCommandArgs.toTypedArray()
             val start: Long = System.currentTimeMillis()
             // Capture Kawa compiler stderr. The ODE server parses out the warnings and errors and adds
             // them to the protocol buffer for logging purposes. (See
@@ -1885,8 +1850,7 @@ class Compiler @VisibleForTesting internal constructor(
             }
             val kawaOutput: String = kawaOutputStream.toString()
             out.print(kawaOutput)
-            val kawaCompileTimeMessage = "Kawa compile time: " +
-                    ((System.currentTimeMillis() - start) / 1000.0).toString() + " seconds"
+            val kawaCompileTimeMessage = "Kawa compile time: ${(System.currentTimeMillis() - start) / 1000.0} seconds"
             out.println(kawaCompileTimeMessage)
             LOG.info(kawaCompileTimeMessage)
 
@@ -1915,28 +1879,22 @@ class Compiler @VisibleForTesting internal constructor(
     private fun runZipAlign(apkAbsolutePath: String, tmpDir: File): Boolean {
         // TODO(user): add zipalign tool appinventor->lib->android->tools->linux and windows
         // Need to make sure assets directory exists otherwise zipalign will fail.
-        createDir(project.getAssetsDirectory())
+        createDir(project.assetsDirectory)
         val zipAlignTool: String
         val osName: String = System.getProperty("os.name")
-        zipAlignTool = if (osName.equals("Mac OS X")) {
-            MAC_ZIPALIGN_TOOL
-        } else if (osName.equals("Linux")) {
-            LINUX_ZIPALIGN_TOOL
-        } else if (osName.startsWith("Windows")) {
-            WINDOWS_ZIPALIGN_TOOL
-        } else {
-            LOG.warning("YAIL compiler - cannot run ZIPALIGN on OS $osName")
-            err.println("YAIL compiler - cannot run ZIPALIGN on OS $osName")
-            userErrors.print(
-                String.format(
-                    ERROR_IN_STAGE,
-                    "ZIPALIGN"
-                )
-            )
-            return false
+        zipAlignTool = when {
+            osName == "Mac OS X" -> MAC_ZIPALIGN_TOOL
+            osName == "Linux" -> LINUX_ZIPALIGN_TOOL
+            osName.startsWith("Windows") -> WINDOWS_ZIPALIGN_TOOL
+            else -> {
+                LOG.warning("YAIL compiler - cannot run ZIPALIGN on OS $osName")
+                err.println("YAIL compiler - cannot run ZIPALIGN on OS $osName")
+                userErrors.print(String.format(ERROR_IN_STAGE, "ZIPALIGN"))
+                return false
+            }
         }
         // TODO: create tmp file for zipaling result
-        val zipAlignedPath: String = tmpDir.getAbsolutePath() + SLASH + "zipaligned.apk"
+        val zipAlignedPath: String = tmpDir.absolutePath + SLASH + "zipaligned.apk"
         // zipalign -f 4 infile.zip outfile.zip
         val zipAlignCommandLine = arrayOf(
             getResource(zipAlignTool),
@@ -1960,8 +1918,7 @@ class Compiler @VisibleForTesting internal constructor(
             userErrors.print(String.format(ERROR_IN_STAGE, "ZIPALIGN"))
             return false
         }
-        val zipALignTimeMessage = "ZIPALIGN time: " +
-                ((System.currentTimeMillis() - startZipAlign) / 1000.0).toString() + " seconds"
+        val zipALignTimeMessage = "ZIPALIGN time: ${(System.currentTimeMillis() - startZipAlign) / 1000.0} seconds"
         out.println(zipALignTimeMessage)
         LOG.info(zipALignTimeMessage)
         return true
@@ -1976,8 +1933,8 @@ class Compiler @VisibleForTesting internal constructor(
       --ks-pass pass:android\
       <APK>
     */
-        val apksignerCommandLine = arrayOf(
-            System.getProperty("java.home").toString() + "/bin/java", "-jar",
+        val apksignerCommandLine = listOf(
+            "${System.getProperty("java.home")}/bin/java", "-jar",
             "-mx" + mx + "M",
             getResource(APKSIGNER_JAR), "sign",
             "-ks", keystoreAbsolutePath,
@@ -1992,8 +1949,7 @@ class Compiler @VisibleForTesting internal constructor(
             userErrors.print(String.format(ERROR_IN_STAGE, "APKSIGNER"))
             return false
         }
-        val apkSignerTimeMessage =
-            "APKSIGNER time: " + ((System.currentTimeMillis() - startApkSigner) / 1000.0).toString() + " seconds"
+        val apkSignerTimeMessage = "APKSIGNER time: ${(System.currentTimeMillis() - startApkSigner) / 1000.0} seconds"
         out.println(apkSignerTimeMessage)
         LOG.info(apkSignerTimeMessage)
         return true
@@ -2018,7 +1974,7 @@ class Compiler @VisibleForTesting internal constructor(
         // Ratio of icon size to png image size for round icon is 0.80
         val iconWidth = imageWidth * 0.80
         // Round iconWidth value to even int for a centered png
-        val intIconWidth = Math.round(iconWidth / 2) as Int * 2
+        val intIconWidth = (iconWidth / 2).roundToLong() as Int * 2
         val tmp: Image = icon.getScaledInstance(intIconWidth, intIconWidth, Image.SCALE_SMOOTH)
         val marginWidth = (imageWidth - intIconWidth) / 2
         val roundIcon = BufferedImage(imageWidth, imageWidth, BufferedImage.TYPE_INT_ARGB)
@@ -2036,7 +1992,7 @@ class Compiler @VisibleForTesting internal constructor(
         // Ratio of icon size to png image size for roundRect icon is 0.93
         val iconWidth = imageWidth * 0.93
         // Round iconWidth value to even int for a centered png
-        val intIconWidth = Math.round(iconWidth / 2) as Int * 2
+        val intIconWidth = (iconWidth / 2).roundToLong() as Int * 2
         val tmp: Image = icon.getScaledInstance(intIconWidth, intIconWidth, Image.SCALE_SMOOTH)
         val marginWidth = (imageWidth - intIconWidth) / 2
         // Corner radius of roundedCornerIcon needs to be 1/12 of width according to Android material guidelines
@@ -2057,7 +2013,7 @@ class Compiler @VisibleForTesting internal constructor(
         // 72x72dp appears in the masked viewport, so we shrink down the size of the image accordingly.
         val iconWidth = imageWidth * 72.0 / 108.0
         // Round iconWidth value to even int for a centered png
-        val intIconWidth = Math.round(iconWidth / 2) as Int * 2
+        val intIconWidth = (iconWidth / 2).roundToLong() as Int * 2
         val tmp: Image = icon.getScaledInstance(intIconWidth, intIconWidth, Image.SCALE_SMOOTH)
         val marginWidth = (imageWidth - intIconWidth) / 2
         val foregroundImageIcon = BufferedImage(imageWidth, imageWidth, BufferedImage.TYPE_INT_ARGB)
@@ -2072,14 +2028,14 @@ class Compiler @VisibleForTesting internal constructor(
     private fun prepareApplicationIcon(
         outputPngFile: File,
         mipmapDirectories: List<File>,
-        standardICSizes: List<Integer>,
-        foregroundICSizes: List<Integer>
+        standardICSizes: List<Int>,
+        foregroundICSizes: List<Int>
     ): Boolean {
-        val userSpecifiedIcon: String = Strings.nullToEmpty(project.getIcon())
+        val userSpecifiedIcon: String = project.icon ?: ""
         try {
             val icon: BufferedImage
-            if (!userSpecifiedIcon.isEmpty()) {
-                val iconFile = File(project.getAssetsDirectory(), userSpecifiedIcon)
+            if (userSpecifiedIcon.isNotEmpty()) {
+                val iconFile = File(project.assetsDirectory, userSpecifiedIcon)
                 icon = ImageIO.read(iconFile)
                 if (icon == null) {
                     // This can happen if the iconFile isn't an image file.
@@ -2098,10 +2054,10 @@ class Compiler @VisibleForTesting internal constructor(
             val foregroundIcon: BufferedImage = produceForegroundImageIcon(icon)
 
             // For each mipmap directory, create all types of ic_launcher photos with respective mipmap sizes
-            for (i in 0 until mipmapDirectories.size()) {
+            for (i in mipmapDirectories.indices) {
                 val mipmapDirectory: File = mipmapDirectories[i]
-                val standardSize: Integer = standardICSizes[i]
-                val foregroundSize: Integer = foregroundICSizes[i]
+                val standardSize: Int = standardICSizes[i]
+                val foregroundSize: Int = foregroundICSizes[i]
                 val round: BufferedImage = resizeImage(roundIcon, standardSize, standardSize)
                 val roundRect: BufferedImage = resizeImage(roundRectIcon, standardSize, standardSize)
                 val foreground: BufferedImage = resizeImage(foregroundIcon, foregroundSize, foregroundSize)
@@ -2116,7 +2072,7 @@ class Compiler @VisibleForTesting internal constructor(
         } catch (e: Exception) {
             e.printStackTrace()
             // If the user specified the icon, this is fatal.
-            if (!userSpecifiedIcon.isEmpty()) {
+            if (userSpecifiedIcon.isNotEmpty()) {
                 userErrors.print(String.format(ICON_ERROR, userSpecifiedIcon))
                 return false
             }
@@ -2136,12 +2092,13 @@ class Compiler @VisibleForTesting internal constructor(
     private fun recordDirectoryForMainDex(dir: File, classes: Set<String>, root: String) {
         val files: Array<File> = dir.listFiles() ?: return
         for (f in files) {
-            if (f.isDirectory()) {
-                recordDirectoryForMainDex(f, classes, root)
-            } else if (f.getName().endsWith(".class")) {
-                var className: String = f.getAbsolutePath().replace(root, "")
-                className = className.substring(0, className.length() - 6)
-                classes.add(className.replaceAll("/", "."))
+            when {
+                f.isDirectory -> recordDirectoryForMainDex(f, classes, root)
+                f.name.endsWith(".class") -> {
+                    var className = f.absolutePath.replace(root, "")
+                    className = className.substring(0, className.length - 6)
+                    classes.add(className.replaceAll("/", "."))
+                }
             }
         }
     }
@@ -2161,7 +2118,7 @@ class Compiler @VisibleForTesting internal constructor(
             while (`is`.getNextEntry().also { entry = it } != null) {
                 var className: String = entry.getName()
                 if (className.endsWith(".class")) {
-                    className = className.substring(0, className.length() - 6)
+                    className = className.substring(0, className.length - 6)
                     classes.add(className.replaceAll("/", "."))
                 }
             }
@@ -2178,10 +2135,9 @@ class Compiler @VisibleForTesting internal constructor(
      */
     @Throws(IOException::class)
     private fun recordForMainDex(file: File, classes: Set<String>): File {
-        if (file.isDirectory()) {
-            recordDirectoryForMainDex(file, classes, file.getAbsolutePath() + File.separator)
-        } else if (file.getName().endsWith(".jar")) {
-            recordJarForMainDex(file, classes)
+        when {
+            file.isDirectory -> recordDirectoryForMainDex(file, classes, file.absolutePath + File.separator)
+            file.name.endsWith(".jar") -> recordJarForMainDex(file, classes)
         }
         return file
     }
@@ -2201,7 +2157,7 @@ class Compiler @VisibleForTesting internal constructor(
                 for (name in TreeSet(classes)) {
                     out.println(name.replaceAll("\\.", "/").toString() + ".class")
                 }
-                return target.getAbsolutePath()
+                return target.absolutePath
             }
         } catch (e: IOException) {
             return null
@@ -2284,12 +2240,7 @@ class Compiler @VisibleForTesting internal constructor(
             }
 
             // Aggregate all of the classes.dex files output by dx
-            val files: Array<File> = File(dexedClassesDir).listFiles(object : FilenameFilter() {
-                @Override
-                fun accept(dir: File?, name: String): Boolean {
-                    return name.endsWith(".dex")
-                }
-            }) ?: throw FileNotFoundException("Could not find classes.dex")
+            val files: Array<File> = File(dexedClassesDir).listFiles { dir, name -> name.endsWith(".dex") } ?: throw FileNotFoundException("Could not find classes.dex")
             Collections.addAll(dexFiles, files)
 
             // Log status
@@ -2315,12 +2266,12 @@ class Compiler @VisibleForTesting internal constructor(
         symbolOutputDir: File
     ): Boolean {
         // Need to make sure assets directory exists otherwise aapt will fail.
-        val mergedAssetsDir: File = createDir(project.getBuildDirectory(), ASSET_DIR_NAME)
+        val mergedAssetsDir: File = createDir(project.buildDirectory, ASSET_DIR_NAME)
         val aaptTool: String
         val osName: String = System.getProperty("os.name")
-        aaptTool = if (osName.equals("Mac OS X")) {
+        aaptTool = if (osName == "Mac OS X") {
             MAC_AAPT_TOOL
-        } else if (osName.equals("Linux")) {
+        } else if (osName == "Linux") {
             LINUX_AAPT_TOOL
         } else if (osName.startsWith("Windows")) {
             WINDOWS_AAPT_TOOL
@@ -2330,23 +2281,23 @@ class Compiler @VisibleForTesting internal constructor(
             userErrors.print(String.format(ERROR_IN_STAGE, "AAPT"))
             return false
         }
-        if (!mergeResources(resDir, project.getBuildDirectory(), aaptTool)) {
+        if (!mergeResources(resDir, project.buildDirectory, aaptTool)) {
             LOG.warning("Unable to merge resources")
             err.println("Unable to merge resources")
             userErrors.print(String.format(ERROR_IN_STAGE, "AAPT"))
             return false
         }
-        val aaptPackageCommandLineArgs: List<String> = ArrayList<String>()
+        val aaptPackageCommandLineArgs: List<String> = ArrayList()
         aaptPackageCommandLineArgs.add(getResource(aaptTool))
         aaptPackageCommandLineArgs.add("package")
         aaptPackageCommandLineArgs.add("-v")
         aaptPackageCommandLineArgs.add("-f")
         aaptPackageCommandLineArgs.add("-M")
-        aaptPackageCommandLineArgs.add(manifestFile.getAbsolutePath())
+        aaptPackageCommandLineArgs.add(manifestFile.absolutePath)
         aaptPackageCommandLineArgs.add("-S")
         aaptPackageCommandLineArgs.add(mergedResDir.getAbsolutePath())
         aaptPackageCommandLineArgs.add("-A")
-        aaptPackageCommandLineArgs.add(mergedAssetsDir.getAbsolutePath())
+        aaptPackageCommandLineArgs.add(mergedAssetsDir.absolutePath)
         aaptPackageCommandLineArgs.add("-I")
         aaptPackageCommandLineArgs.add(getResource(ANDROID_RUNTIME))
         aaptPackageCommandLineArgs.add("-F")
@@ -2356,11 +2307,11 @@ class Compiler @VisibleForTesting internal constructor(
             val packageName: String = Signatures.getPackageName(project.getMainClass())
             aaptPackageCommandLineArgs.add("-m")
             aaptPackageCommandLineArgs.add("-J")
-            aaptPackageCommandLineArgs.add(sourceOutputDir.getAbsolutePath())
+            aaptPackageCommandLineArgs.add(sourceOutputDir.absolutePath)
             aaptPackageCommandLineArgs.add("--custom-package")
             aaptPackageCommandLineArgs.add(packageName)
             aaptPackageCommandLineArgs.add("--output-text-symbols")
-            aaptPackageCommandLineArgs.add(symbolOutputDir.getAbsolutePath())
+            aaptPackageCommandLineArgs.add(symbolOutputDir.absolutePath)
             aaptPackageCommandLineArgs.add("--no-version-vectors")
             appRJava = File(sourceOutputDir, packageName.replaceAll("\\.", SLASHREGEX) + SLASH + "R.java")
             appRTxt = File(symbolOutputDir, "R.txt")
@@ -2389,10 +2340,10 @@ class Compiler @VisibleForTesting internal constructor(
         val aaptTool: String
         val aapt2Tool: String
         val osName: String = System.getProperty("os.name")
-        if (osName.equals("Mac OS X")) {
+        if (osName == "Mac OS X") {
             aaptTool = MAC_AAPT_TOOL
             aapt2Tool = MAC_AAPT2_TOOL
-        } else if (osName.equals("Linux")) {
+        } else if (osName == "Linux") {
             aaptTool = LINUX_AAPT_TOOL
             aapt2Tool = LINUX_AAPT2_TOOL
         } else if (osName.startsWith("Windows")) {
@@ -2404,7 +2355,7 @@ class Compiler @VisibleForTesting internal constructor(
             userErrors.print(String.format(ERROR_IN_STAGE, "AAPT2"))
             return false
         }
-        if (!mergeResources(resDir, project.getBuildDirectory(), aaptTool)) {
+        if (!mergeResources(resDir, project.buildDirectory, aaptTool)) {
             LOG.warning("Unable to merge resources")
             err.println("Unable to merge resources")
             userErrors.print(String.format(ERROR_IN_STAGE, "AAPT"))
@@ -2438,9 +2389,9 @@ class Compiler @VisibleForTesting internal constructor(
     private fun runAapt2Link(manifestFile: File, tmpPackageName: String, symbolOutputDir: File): Boolean {
         val aapt2Tool: String
         val osName: String = System.getProperty("os.name")
-        aapt2Tool = if (osName.equals("Mac OS X")) {
+        aapt2Tool = if (osName == "Mac OS X") {
             MAC_AAPT2_TOOL
-        } else if (osName.equals("Linux")) {
+        } else if (osName == "Linux") {
             LINUX_AAPT2_TOOL
         } else if (osName.startsWith("Windows")) {
             WINDOWS_AAPT2_TOOL
@@ -2462,9 +2413,9 @@ class Compiler @VisibleForTesting internal constructor(
         aapt2CommandLine.add("-R")
         aapt2CommandLine.add(resourcesZip.getAbsolutePath())
         aapt2CommandLine.add("-A")
-        aapt2CommandLine.add(createDir(project.getBuildDirectory(), ASSET_DIR_NAME).getAbsolutePath())
+        aapt2CommandLine.add(createDir(project.buildDirectory, ASSET_DIR_NAME).absolutePath)
         aapt2CommandLine.add("--manifest")
-        aapt2CommandLine.add(manifestFile.getAbsolutePath())
+        aapt2CommandLine.add(manifestFile.absolutePath)
         aapt2CommandLine.add("--output-text-symbols")
         aapt2CommandLine.add(appRTxt.getAbsolutePath())
         aapt2CommandLine.add("--auto-add-overlay")
@@ -2494,16 +2445,13 @@ class Compiler @VisibleForTesting internal constructor(
     ): Boolean {
         try {
             val jarsignerTool = "jarsigner"
-            var fileName = outputFileName
-            if (fileName == null) {
-                fileName = project.getProjectName().toString() + ".aab"
-            }
+            val fileName = outputFileName ?: "${project.projectName}.aab"
             val aabCompiler: AabCompiler = AabCompiler(out, buildDir, childProcessRam - 200)
                 .setLibsDir(libsDir)
                 .setProtoApk(File(tmpPackageName))
                 .setJarsigner(jarsignerTool)
                 .setBundletool(getResource(BUNDLETOOL_JAR))
-                .setDeploy(deployDir.getAbsolutePath() + SLASH + fileName)
+                .setDeploy(deployDir.absolutePath + SLASH + fileName)
                 .setKeystore(keystoreFilePath)
                 .setDexDir(dexedClassesDir)
             val aab: Future<Boolean> = Executors.newSingleThreadExecutor().submit(aabCompiler)
@@ -2529,7 +2477,7 @@ class Compiler @VisibleForTesting internal constructor(
         val x8664Dir: File = createDir(libsDir, X86_64_DIR_NAME)
         return try {
             for (type in nativeLibsNeeded.keySet()) {
-                for (lib in nativeLibsNeeded.get(type)) {
+                for (lib in nativeLibsNeeded[type]) {
                     val isV7a: Boolean = lib.endsWith(ComponentDescriptorConstants.ARMEABI_V7A_SUFFIX)
                     val isV8a: Boolean = lib.endsWith(ComponentDescriptorConstants.ARM64_V8A_SUFFIX)
                     val isx8664: Boolean = lib.endsWith(ComponentDescriptorConstants.X86_64_SUFFIX)
@@ -2588,7 +2536,7 @@ class Compiler @VisibleForTesting internal constructor(
         val processedLibs: Set<String> = HashSet()
 
         // Attach the Android support libraries (needed by every app)
-        libsNeeded.put("ANDROID", HashSet(Arrays.asList(SUPPORT_AARS)))
+        libsNeeded.put("ANDROID", HashSet(listOf(SUPPORT_AARS)))
 
         // walk components list for libraries ending in ".aar"
         return try {
@@ -2617,15 +2565,15 @@ class Compiler @VisibleForTesting internal constructor(
     }
 
     private fun attachCompAssets(): Boolean {
-        createDir(project.getBuildDirectory()) // Needed to insert resources.
+        createDir(project.buildDirectory) // Needed to insert resources.
         return try {
             // Gather non-library assets to be added to apk's Asset directory.
             // The assets directory have been created before this.
-            val mergedAssetDir: File = createDir(project.getBuildDirectory(), ASSET_DIR_NAME)
+            val mergedAssetDir: File = createDir(project.buildDirectory, ASSET_DIR_NAME)
 
             // Copy component/extension assets to build/assets
             for (type in assetsNeeded.keySet()) {
-                for (assetName in assetsNeeded.get(type)) {
+                for (assetName in assetsNeeded[type]) {
                     var targetDir: File = mergedAssetDir
                     var sourcePath: String
                     if (simpleCompTypes!!.contains(type)) {
@@ -2650,8 +2598,8 @@ class Compiler @VisibleForTesting internal constructor(
             val assets: Array<File> = project.getAssetsDirectory().listFiles()
             if (assets != null) {
                 for (asset in assets) {
-                    if (asset.isFile()) {
-                        Files.copy(asset, File(mergedAssetDir, asset.getName()))
+                    if (asset.isFile) {
+                        Files.copy(asset, File(mergedAssetDir, asset.name))
                     }
                 }
             }
@@ -2725,7 +2673,7 @@ class Compiler @VisibleForTesting internal constructor(
    */
     private fun libSetup() {
         val osName: String = System.getProperty("os.name")
-        if (osName.equals("Linux")) {
+        if (osName == "Linux") {
             ensureLib("/tmp/lib64", "libc++.so", "/tools/linux/lib64/libc++.so")
         } else if (osName.startsWith("Windows")) {
             ensureLib(System.getProperty("java.io.tmpdir"), "libwinpthread-1.dll", WINDOWS_PTHEAD_DLL)
@@ -2738,27 +2686,22 @@ class Compiler @VisibleForTesting internal constructor(
     @Throws(IOException::class, JSONException::class)
     private fun loadJsonInfo(infoMap: ConcurrentMap<String, Set<String>>, targetInfo: String) {
         synchronized(infoMap) {
-            if (!infoMap.isEmpty()) {
-                return
-            }
-            val buildInfo = JSONArray(
-                "[" + simpleCompsBuildInfo.join(",").toString() + "," +
-                        extCompsBuildInfo.join(",").toString() + "]"
+            if (!infoMap.isEmpty()) return
+            val buildInfo = JSONArray("[${simpleCompsBuildInfo.join(",")},${extCompsBuildInfo.join(",")}]"
             )
             for (i in 0 until buildInfo.length()) {
                 val compJson: JSONObject = buildInfo.getJSONObject(i)
-                var infoArray: JSONArray? = null
                 val type: String = compJson.getString("type")
-                infoArray = try {
+                val infoArray: JSONArray = try {
                     compJson.getJSONArray(targetInfo)
                 } catch (e: JSONException) {
                     // Older compiled extensions will not have a broadcastReceiver
                     // defined. Rather then require them all to be recompiled, we
                     // treat the missing attribute as empty.
-                    if (e.getMessage().contains("broadcastReceiver")) {
+                    if (e.message.contains("broadcastReceiver")) {
                         LOG.log(Level.INFO, "Component \"$type\" does not have a broadcast receiver.")
                         continue
-                    } else if (e.getMessage().contains(ComponentDescriptorConstants.ANDROIDMINSDK_TARGET)) {
+                    } else if (e.message.contains(ComponentDescriptorConstants.ANDROIDMINSDK_TARGET)) {
                         LOG.log(Level.INFO, "Component \"$type\" does not specify a minimum SDK.")
                         continue
                     } else {
@@ -2797,17 +2740,16 @@ class Compiler @VisibleForTesting internal constructor(
      */
     private fun processConditionalInfo(compJson: JSONObject, type: String, targetInfo: String) {
         // Strip off the package name since SCM and BKY use unqualified names
-        var type = type
-        type = type.substring(type.lastIndexOf('.') + 1)
-        val conditionals: JSONObject = compJson.optJSONObject(ComponentDescriptorConstants.CONDITIONALS_TARGET)
+        var type = type.substring(type.lastIndexOf('.') + 1)
+        val conditionals: JSONObject? = compJson.optJSONObject(ComponentDescriptorConstants.CONDITIONALS_TARGET)
         if (conditionals != null) {
-            val jsonBlockMap: JSONObject = conditionals.optJSONObject(targetInfo)
+            val jsonBlockMap: JSONObject? = conditionals.optJSONObject(targetInfo)
             if (jsonBlockMap != null) {
                 if (!this.conditionals.containsKey(targetInfo)) {
-                    this.conditionals.put(targetInfo, HashMap<String, Map<String, Set<String>>>())
+                    this.conditionals[targetInfo] = HashMap()
                 }
                 val blockMap: Map<String, Set<String>> = HashMap()
-                this.conditionals.get(targetInfo).put(type, blockMap)
+                this.conditionals[targetInfo].put(type, blockMap)
                 for (key in Lists.newArrayList(jsonBlockMap.keys())) {
                     val data: JSONArray = jsonBlockMap.optJSONArray(key)
                     val result: HashSet<String> = HashSet()
@@ -2822,9 +2764,7 @@ class Compiler @VisibleForTesting internal constructor(
 
     private fun setProgress(increments: Int) {
         LOG.info("The current progress is $increments%")
-        if (reporter != null) {
-            reporter.report(increments)
-        }
+        reporter?.report(increments)
     }
 
     private fun readBuildInfo() {
@@ -2835,7 +2775,7 @@ class Compiler @VisibleForTesting internal constructor(
                 )
             )
             extCompsBuildInfo = JSONArray()
-            val readComponentInfos: Set<String> = HashSet<String>()
+            val readComponentInfos: Set<String> = HashSet()
             for (type in extCompTypes!!) {
                 // .../assets/external_comps/com.package.MyExtComp/files/component_build_info.json
                 var extCompRuntimeFileDir = File(getExtCompDirPath(type) + RUNTIME_FILES_DIR)
@@ -2850,13 +2790,10 @@ class Compiler @VisibleForTesting internal constructor(
                     // old extension with a single component?
                     jsonFile = File(extCompRuntimeFileDir, "component_build_info.json")
                     if (!jsonFile.exists()) {
-                        throw IllegalStateException(
-                            "No component_build_info.json in extension for " +
-                                    type
-                        )
+                        throw IllegalStateException("No component_build_info.json in extension for $type")
                     }
                 }
-                if (readComponentInfos.contains(jsonFile.getAbsolutePath())) {
+                if (readComponentInfos.contains(jsonFile.absolutePath)) {
                     continue  // already read the build infos for this type (bundle extension)
                 }
                 val buildInfo: String = Resources.toString(jsonFile.toURI().toURL(), Charsets.UTF_8)
@@ -2864,13 +2801,13 @@ class Compiler @VisibleForTesting internal constructor(
                 val value: Object = tokener.nextValue()
                 if (value is JSONObject) {
                     extCompsBuildInfo.put(value as JSONObject)
-                    readComponentInfos.add(jsonFile.getAbsolutePath())
+                    readComponentInfos.add(jsonFile.absolutePath)
                 } else if (value is JSONArray) {
                     val infos: JSONArray = value as JSONArray
                     for (i in 0 until infos.length()) {
                         extCompsBuildInfo.put(infos.getJSONObject(i))
                     }
-                    readComponentInfos.add(jsonFile.getAbsolutePath())
+                    readComponentInfos.add(jsonFile.absolutePath)
                 }
             }
         } catch (e: Exception) {
@@ -2899,51 +2836,23 @@ class Compiler @VisibleForTesting internal constructor(
         }
     }
 
-    private fun getExtCompDirPath(type: String): String? {
-        createDir(project.getAssetsDirectory())
+    private fun getExtCompDirPath(type: String): String {
+        createDir(project.assetsDirectory)
         var candidate = extTypePathCache[type]
         if (candidate != null) {  // already computed the path
             return candidate
         }
-        candidate = project.getAssetsDirectory().getAbsolutePath() + SLASH + EXT_COMPS_DIR_NAME +
-                SLASH + type
+        candidate = project.assetsDirectory.getAbsolutePath() + SLASH + EXT_COMPS_DIR_NAME + SLASH + type
         if (File(candidate).exists()) {  // extension has FCQN as path element
             extTypePathCache.put(type, candidate)
             return candidate
         }
-        candidate = project.getAssetsDirectory().getAbsolutePath() + SLASH +
+        candidate = project.assetsDirectory.getAbsolutePath() + SLASH +
                 EXT_COMPS_DIR_NAME + SLASH + type.substring(0, type.lastIndexOf('.'))
         if (File(candidate).exists()) {  // extension has package name as path element
             extTypePathCache.put(type, candidate)
             return candidate
         }
         throw IllegalStateException("Project lacks extension directory for $type")
-    }
-
-    /**
-     * Creates a new YAIL compiler.
-     *
-     * @param project  project to build
-     * @param compTypes component types used in the project
-     * @param compBlocks component types mapped to blocks used in project
-     * @param out  stdout stream for compiler messages
-     * @param err  stderr stream for compiler messages
-     * @param userErrors stream to write user-visible error messages
-     * @param childProcessMaxRam  maximum RAM for child processes, in MBs.
-     */
-    init {
-        this.project = project
-        this.compBlocks = compBlocks
-        prepareCompTypes(compTypes)
-        readBuildInfo()
-        this.out = out
-        this.err = err
-        this.userErrors = userErrors
-        this.isForCompanion = isForCompanion
-        this.isForEmulator = isForEmulator
-        this.includeDangerousPermissions = includeDangerousPermissions
-        childProcessRamMb = childProcessMaxRam
-        this.dexCacheDir = dexCacheDir
-        this.reporter = reporter
     }
 }

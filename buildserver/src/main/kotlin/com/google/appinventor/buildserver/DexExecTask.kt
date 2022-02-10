@@ -15,15 +15,20 @@
  */
 package com.google.appinventor.buildserver
 
-import com.google.common.hash.HashCode
+import java.io.File
+import java.io.IOException
+import java.nio.file.Files
+import java.util.*
+import kotlin.collections.ArrayList
+import kotlin.collections.HashMap
 
 /**
  * Dex task, modified from the Android SDK to run in BuildServer.
  * Custom task to execute dx while handling dependencies.
  */
-class DexExecTask {
-    private var mExecutable: String? = null
-    private var mOutput: String? = null
+class DexExecTask(val mExecutable: String) {
+//    private var mExecutable: String
+    private var mOutput: String = null
     private var mDexedLibs: String? = null
     private var mVerbose = false
     private var mNoLocals = false
@@ -31,15 +36,6 @@ class DexExecTask {
     private var mDisableDexMerger = false
     private var mainDexFile: String? = null
     private var mPredex = true
-
-    /**
-     * Sets the value of the "executable" attribute.
-     *
-     * @param executable the value.
-     */
-    fun setExecutable(executable: String?) {
-        mExecutable = executable
-    }
 
     /**
      * Sets the value of the "verbose" attribute.
@@ -91,45 +87,34 @@ class DexExecTask {
         mDisableDexMerger = disable
     }
 
-    private fun preDexLibraries(inputs: List<File>): Boolean {
-        if (mDisableDexMerger || inputs.size() === 1) {
+    private fun preDexLibraries(inputs: MutableList<File>): Boolean {
+        if (mDisableDexMerger || inputs.size == 1) {
             // only one input, no need to put a pre-dexed version, even if this path is
             // just a jar file (case for proguard'ed builds)
             return true
         }
         synchronized(semaphore) {
-            val count: Int = inputs.size()
+            val count: Int = inputs.size
             for (i in 0 until count) {
                 val input: File = inputs[i]
-                if (input.isFile()) {
+                if (input.isFile) {
                     // check if this libs needs to be pre-dexed
                     val fileName = getDexFileName(input)
                     val dexedLib = File(mDexedLibs, fileName)
-                    val dexedLibPath: String = dexedLib.getAbsolutePath()
-                    if (!dexedLib.isFile() /*||
-                                                    dexedLib.lastModified() < input.lastModified()*/) {
-                        System.out.println(
-                            String.format(
-                                "Pre-Dexing %1\$s -> %2\$s",
-                                input.getAbsolutePath(), fileName
-                            )
-                        )
-                        if (dexedLib.isFile()) {
+                    val dexedLibPath: String = dexedLib.absolutePath
+                    if (!dexedLib.isFile /*||dexedLib.lastModified() < input.lastModified()*/) {
+                        println("Pre-Dexing ${input.absolutePath} -> $fileName")
+                        if (dexedLib.isFile) {
                             dexedLib.delete()
                         }
-                        val dexSuccess: Boolean = runDx(input, dexedLibPath,  /*showInputs=*/false)
+                        val dexSuccess: Boolean = runDx(input, dexedLibPath,false)
                         if (!dexSuccess) return false
                     } else {
-                        System.out.println(
-                            String.format(
-                                "Using Pre-Dexed %1\$s <- %2\$s",
-                                fileName, input.getAbsolutePath()
-                            )
-                        )
+                        println("Using Pre-Dexed $fileName <- ${input.absolutePath}")
                     }
 
                     // replace the input with the pre-dex libs.
-                    inputs.set(i, dexedLib)
+                    inputs[i] = dexedLib
                 }
             }
             return true
@@ -142,13 +127,13 @@ class DexExecTask {
     }
 
     private fun getHashFor(inputFile: File): String? {
-        var retval = alreadyChecked[inputFile.getAbsolutePath()]
+        var retval = alreadyChecked[inputFile.absolutePath]
         return retval
             ?: try {
                 val hashFunction: HashFunction = Hashing.md5()
                 val hashCode: HashCode = hashFunction.hashBytes(Files.readAllBytes(inputFile.toPath()))
                 retval = hashCode.toString()
-                alreadyChecked.put(inputFile.getAbsolutePath(), retval)
+                alreadyChecked.put(inputFile.absolutePath, retval)
                 retval
             } catch (e: IOException) {
                 e.printStackTrace()
@@ -160,15 +145,11 @@ class DexExecTask {
     fun execute(paths: List<File>): Boolean {
         // pre dex libraries if needed
         if (mPredex) {
-            val successPredex = preDexLibraries(paths)
+            val successPredex = preDexLibraries(paths.toMutableList())
             if (!successPredex) return false
         }
-        System.out.println(
-            String.format(
-                "Converting compiled files and external libraries into %1\$s...", mOutput
-            )
-        )
-        return runDx(paths, mOutput, mVerbose /*showInputs*/)
+        println("Converting compiled files and external libraries into $mOutput...")
+        return runDx(paths, mOutput, mVerbose)
     }
 
     private fun runDx(input: File, output: String, showInputs: Boolean): Boolean {
@@ -177,9 +158,9 @@ class DexExecTask {
 
     private fun runDx(inputs: Collection<File>, output: String, showInputs: Boolean): Boolean {
         val mx = mChildProcessRamMb - 200
-        val commandLineList: List<String> = ArrayList<String>()
-        commandLineList.add(System.getProperty("java.home").toString() + "/bin/java")
-        commandLineList.add("-mx" + mx + "M")
+        val commandLineList = ArrayList<String>()
+        commandLineList.add("${System.getProperty("java.home")}/bin/java")
+        commandLineList.add("-mx${mx}M")
         commandLineList.add("-jar")
         commandLineList.add(mExecutable)
         commandLineList.add("--dex")
@@ -197,24 +178,22 @@ class DexExecTask {
         }
         commandLineList.add("--output=$output")
         for (input in inputs) {
-            val absPath: String = input.getAbsolutePath()
+            val absPath: String = input.absolutePath
             if (showInputs) {
-                System.out.println("Input: $absPath")
+                println("Input: $absPath")
             }
             commandLineList.add(absPath)
         }
 
         // Convert command line to an array
-        val dxCommandLine = arrayOfNulls<String>(commandLineList.size())
-        commandLineList.toArray(dxCommandLine)
-        return Execution.execute(null, dxCommandLine, System.out, System.err)
+        return Execution.execute(null, commandLineList.toTypedArray(), System.out, System.err)
     }
 
     protected val execTaskName: String
-        protected get() = "dx"
+        get() = "dx"
 
     companion object {
-        private val alreadyChecked: Map<String, String> = HashMap<String, String>()
-        private val semaphore: Object = Object() // Used to protect dex cache creation
+        private val alreadyChecked: Map<String, String> = HashMap()
+        private val semaphore = Any() // Used to protect dex cache creation
     }
 }
