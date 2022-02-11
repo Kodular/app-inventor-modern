@@ -5,24 +5,17 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="b3b51d39-0f15-4d13-92da-0cc79cec0cb0" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/.gitignore" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/compiler.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/gradle.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/jarRepositories.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/libraries-with-intellij-classes.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/uiDesigner.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/buildserver/src/main/kotlin/com/google/appinventor/buildserver/BuildServer.kt" beforeDir="false" afterPath="$PROJECT_DIR$/buildserver/src/main/kotlin/com/google/appinventor/buildserver/BuildServer.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/buildserver/src/main/kotlin/com/google/appinventor/buildserver/Compiler.kt" beforeDir="false" afterPath="$PROJECT_DIR$/buildserver/src/main/kotlin/com/google/appinventor/buildserver/Compiler.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/buildserver/src/main/kotlin/com/google/appinventor/buildserver/Project.kt" beforeDir="false" afterPath="$PROJECT_DIR$/buildserver/src/main/kotlin/com/google/appinventor/buildserver/Project.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/buildserver/src/main/kotlin/com/google/appinventor/buildserver/ProjectBuilder.kt" beforeDir="false" afterPath="$PROJECT_DIR$/buildserver/src/main/kotlin/com/google/appinventor/buildserver/ProjectBuilder.kt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/compiler.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/jarRepositories.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/gradle.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/gradle.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/build.gradle.kts" beforeDir="false" afterPath="$PROJECT_DIR$/backend/build.gradle.kts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/kotlin/me/pavi2410/backend/server.kt" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/kotlin/me/pavi2410/backend/server.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/buildserver/build.gradle.kts" beforeDir="false" afterPath="$PROJECT_DIR$/buildserver/build.gradle.kts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/buildserver/src/main/kotlin/com/google/appinventor/buildserver/util/AARLibraries.kt" beforeDir="false" afterPath="$PROJECT_DIR$/buildserver/src/main/kotlin/com/google/appinventor/buildserver/util/AARLibraries.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/buildserver/src/main/kotlin/com/google/appinventor/buildserver/util/AARLibrary.kt" beforeDir="false" afterPath="$PROJECT_DIR$/buildserver/src/main/kotlin/com/google/appinventor/buildserver/util/AARLibrary.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/buildserver/src/main/kotlin/com/google/appinventor/buildserver/util/AabZipper.kt" beforeDir="false" afterPath="$PROJECT_DIR$/buildserver/src/main/kotlin/com/google/appinventor/buildserver/util/AabZipper.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/buildserver/src/main/kotlin/com/google/appinventor/buildserver/util/BaseLogger.kt" beforeDir="false" afterPath="$PROJECT_DIR$/buildserver/src/main/kotlin/com/google/appinventor/buildserver/util/BaseLogger.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/buildserver/src/main/kotlin/me/pavi2410/buildserver/App.kt" beforeDir="false" afterPath="$PROJECT_DIR$/buildserver/src/main/kotlin/me/pavi2410/buildserver/App.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/buildserver/src/main/kotlin/me/pavi2410/buildserver/Main.kt" beforeDir="false" afterPath="$PROJECT_DIR$/buildserver/src/main/kotlin/me/pavi2410/buildserver/Main.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/buildserver/src/main/kotlin/me/pavi2410/buildserver/Routing.kt" beforeDir="false" afterPath="$PROJECT_DIR$/buildserver/src/main/kotlin/me/pavi2410/buildserver/Routing.kt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gradle/wrapper/gradle-wrapper.properties" beforeDir="false" afterPath="$PROJECT_DIR$/gradle/wrapper/gradle-wrapper.properties" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -69,8 +62,11 @@
   </component>
   <component name="HighlightingSettingsPerFile">
     <setting file="file://$PROJECT_DIR$/buildserver/src/main/kotlin/me/pavi2410/buildserver/Routing.kt" root0="FORCE_HIGHLIGHTING" />
-    <setting file="file://$PROJECT_DIR$/buildserver/src/main/kotlin/me/pavi2410/buildserver/App.kt" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/buildserver/src/main/kotlin/com/google/appinventor/buildserver/BuildServer.kt" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/buildserver/src/main/kotlin/me/pavi2410/buildserver/App.kt" root0="FORCE_HIGHLIGHTING" />
+  </component>
+  <component name="MarkdownSettingsMigration">
+    <option name="stateVersion" value="1" />
   </component>
   <component name="ProjectId" id="1oyM5AFKYc4CT4kRyxt7LL2PnxV" />
   <component name="ProjectViewState">
@@ -121,17 +117,6 @@
       <DebugAllEnabled>false</DebugAllEnabled>
       <method v="2" />
     </configuration>
-    <configuration default="true" type="JetRunConfigurationType">
-      <method v="2">
-        <option name="Make" enabled="true" />
-      </method>
-    </configuration>
-    <configuration default="true" type="KotlinStandaloneScriptRunConfigurationType">
-      <option name="filePath" />
-      <method v="2">
-        <option name="Make" enabled="true" />
-      </method>
-    </configuration>
     <configuration name="AppKt" type="KtorApplicationConfigurationType" factoryName="Ktor">
       <module name="app-inventor-modern.buildserver.main" />
       <option name="alternativeJrePath" value="" />
@@ -163,6 +148,51 @@
       </method>
     </configuration>
     <configuration name="serverKt (2)" type="KtorApplicationConfigurationType" factoryName="Ktor">
+      <module name="app-inventor-modern.backend.main" />
+      <option name="alternativeJrePath" value="" />
+      <option name="alternativeJrePathEnabled" value="false" />
+      <option name="includeProvidedScope" value="true" />
+      <option name="mainClass" value="me.pavi2410.backend.serverKt" />
+      <option name="passParentEnvs" value="true" />
+      <option name="programParameters" value="" />
+      <option name="shortenCommandLine" />
+      <option name="vmParameters" value="" />
+      <option name="workingDirectory" value="" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="serverKt (3)" type="KtorApplicationConfigurationType" factoryName="Ktor">
+      <module name="app-inventor-modern.backend.main" />
+      <option name="alternativeJrePath" value="" />
+      <option name="alternativeJrePathEnabled" value="false" />
+      <option name="includeProvidedScope" value="true" />
+      <option name="mainClass" value="me.pavi2410.backend.serverKt" />
+      <option name="passParentEnvs" value="true" />
+      <option name="programParameters" value="" />
+      <option name="shortenCommandLine" />
+      <option name="vmParameters" value="" />
+      <option name="workingDirectory" value="" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="serverKt (4)" type="KtorApplicationConfigurationType" factoryName="Ktor">
+      <module name="app-inventor-modern.backend.main" />
+      <option name="alternativeJrePath" value="" />
+      <option name="alternativeJrePathEnabled" value="false" />
+      <option name="includeProvidedScope" value="true" />
+      <option name="mainClass" value="me.pavi2410.backend.serverKt" />
+      <option name="passParentEnvs" value="true" />
+      <option name="programParameters" value="" />
+      <option name="shortenCommandLine" />
+      <option name="vmParameters" value="" />
+      <option name="workingDirectory" value="" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="serverKt (5)" type="KtorApplicationConfigurationType" factoryName="Ktor">
       <module name="app-inventor-modern.backend.main" />
       <option name="alternativeJrePath" value="" />
       <option name="alternativeJrePathEnabled" value="false" />
@@ -216,6 +246,12 @@
       <workItem from="1635971900390" duration="142000" />
       <workItem from="1635972055548" duration="315000" />
       <workItem from="1635972414172" duration="123000" />
+      <workItem from="1635972560910" duration="369000" />
+      <workItem from="1636177261410" duration="59000" />
+      <workItem from="1636610593278" duration="2025000" />
+      <workItem from="1637135196355" duration="93000" />
+      <workItem from="1644555166407" duration="35000" />
+      <workItem from="1644555241591" duration="1151000" />
     </task>
     <servers />
   </component>
@@ -232,6 +268,5 @@
         </entry>
       </map>
     </option>
-    <option name="oldMeFiltersMigrated" value="true" />
   </component>
 </project>

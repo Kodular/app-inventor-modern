@@ -1,6 +1,6 @@
 plugins {
     application
-    kotlin("jvm") version "1.5.21"
+    kotlin("jvm") version "1.5.31"
 }
 
 application {
@@ -9,15 +9,19 @@ application {
 
 repositories {
     mavenCentral()
+    maven {
+        url = uri("https://maven.pkg.jetbrains.space/public/p/ktor/eap")
+        name = "ktor-eap"
+    }
 }
 
 dependencies {
+    implementation("io.ktor:ktor-server-content-negotiation:2.0.0-eap-256")
+    implementation("io.ktor:ktor-server-core:2.0.0-eap-256")
+    implementation("io.ktor:ktor-server-netty:2.0.0-eap-256")
     val ktor_version = "1.6.5"
     val logback_version = "1.2.6"
-    implementation("io.ktor:ktor-server-core:$ktor_version")
-    implementation("io.ktor:ktor-server-netty:$ktor_version")
     implementation("ch.qos.logback:logback-classic:$logback_version")
-    implementation("io.ktor:ktor-serialization:$ktor_version")
 
     implementation("org.jetbrains.kotlinx:kotlinx-cli:0.3.3")
     implementation("org.json:json:20210307")
