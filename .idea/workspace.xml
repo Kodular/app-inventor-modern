@@ -5,18 +5,10 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="b3b51d39-0f15-4d13-92da-0cc79cec0cb0" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/backend/.gitignore" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/backend/index.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/backend/package-lock.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/backend/package.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/backend/prisma/dev.db" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/backend/prisma/prismaClient.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/backend/prisma/schema.prisma" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/build.gradle.kts" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/main/kotlin/me/pavi2410/backend/server.kt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/buildserver/src/main/kotlin/com/google/appinventor/buildserver/BuildServer.kt" beforeDir="false" afterPath="$PROJECT_DIR$/buildserver/src/main/kotlin/com/google/appinventor/buildserver/BuildServer.kt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/buildserver/src/main/kotlin/com/google/appinventor/buildserver/util/AARLibraries.kt" beforeDir="false" afterPath="$PROJECT_DIR$/buildserver/src/main/kotlin/com/google/appinventor/buildserver/util/AARLibraries.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/settings.gradle.kts" beforeDir="false" afterPath="$PROJECT_DIR$/settings.gradle.kts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/package.json" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -276,7 +268,7 @@
       <workItem from="1636610593278" duration="2025000" />
       <workItem from="1637135196355" duration="93000" />
       <workItem from="1644555166407" duration="35000" />
-      <workItem from="1644555241591" duration="6892000" />
+      <workItem from="1644555241591" duration="8012000" />
     </task>
     <servers />
   </component>
