@@ -9,5 +9,4 @@
 
 rootProject.name = "app-inventor-modern"
 
-include(":backend")
 include(":buildserver")

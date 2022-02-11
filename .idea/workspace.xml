@@ -5,17 +5,18 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="b3b51d39-0f15-4d13-92da-0cc79cec0cb0" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/.idea/compiler.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/jarRepositories.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/gradle.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/gradle.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/backend/.gitignore" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/backend/index.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/backend/package-lock.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/backend/package.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/backend/prisma/dev.db" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/backend/prisma/prismaClient.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/backend/prisma/schema.prisma" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/build.gradle.kts" beforeDir="false" afterPath="$PROJECT_DIR$/backend/build.gradle.kts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/main/kotlin/me/pavi2410/backend/server.kt" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/kotlin/me/pavi2410/backend/server.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/buildserver/build.gradle.kts" beforeDir="false" afterPath="$PROJECT_DIR$/buildserver/build.gradle.kts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/build.gradle.kts" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/kotlin/me/pavi2410/backend/server.kt" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/buildserver/src/main/kotlin/com/google/appinventor/buildserver/util/AARLibraries.kt" beforeDir="false" afterPath="$PROJECT_DIR$/buildserver/src/main/kotlin/com/google/appinventor/buildserver/util/AARLibraries.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/buildserver/src/main/kotlin/me/pavi2410/buildserver/Routing.kt" beforeDir="false" afterPath="$PROJECT_DIR$/buildserver/src/main/kotlin/me/pavi2410/buildserver/Routing.kt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gradle/wrapper/gradle-wrapper.properties" beforeDir="false" afterPath="$PROJECT_DIR$/gradle/wrapper/gradle-wrapper.properties" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/settings.gradle.kts" beforeDir="false" afterPath="$PROJECT_DIR$/settings.gradle.kts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -46,6 +47,7 @@
     <option name="RECENT_TEMPLATES">
       <list>
         <option value="Kotlin Class" />
+        <option value="JavaScript File" />
       </list>
     </option>
   </component>
@@ -79,6 +81,7 @@
     <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
     <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
     <property name="WebServerToolWindowFactoryState" value="false" />
+    <property name="add_unversioned_files" value="$PROJECT_DIR$/backend/.env" />
     <property name="jdk.selected.JAVA_MODULE" value="Kotlin SDK" />
     <property name="jdk.selected.PYTHON_MODULE" value="Python 3.9" />
     <property name="last_opened_file_path" value="$PROJECT_DIR$" />
@@ -95,7 +98,7 @@
       <recent name="D:\GitHub\pavi2410\app-inventor-modern\frontend" />
     </key>
   </component>
-  <component name="RunManager" selected="Gradle.app-inventor-modern:backend [run]">
+  <component name="RunManager" selected="npm.start">
     <configuration name="app-inventor-modern:backend [run]" type="GradleRunConfiguration" factoryName="Gradle" temporary="true">
       <ExternalSystemSettings>
         <option name="executionName" />
@@ -222,8 +225,30 @@
         <option name="Make" enabled="true" />
       </method>
     </configuration>
+    <configuration name="prisma:db-push" type="js.build_tools.npm" temporary="true" nameIsGenerated="true">
+      <package-json value="$PROJECT_DIR$/backend/package.json" />
+      <command value="run" />
+      <scripts>
+        <script value="prisma:db-push" />
+      </scripts>
+      <node-interpreter value="project" />
+      <envs />
+      <method v="2" />
+    </configuration>
+    <configuration name="start" type="js.build_tools.npm" temporary="true" nameIsGenerated="true">
+      <package-json value="$PROJECT_DIR$/backend/package.json" />
+      <command value="run" />
+      <scripts>
+        <script value="start" />
+      </scripts>
+      <node-interpreter value="project" />
+      <envs />
+      <method v="2" />
+    </configuration>
     <recent_temporary>
       <list>
+        <item itemvalue="npm.start" />
+        <item itemvalue="npm.prisma:db-push" />
         <item itemvalue="Gradle.app-inventor-modern:backend [run]" />
       </list>
     </recent_temporary>
@@ -251,7 +276,7 @@
       <workItem from="1636610593278" duration="2025000" />
       <workItem from="1637135196355" duration="93000" />
       <workItem from="1644555166407" duration="35000" />
-      <workItem from="1644555241591" duration="1151000" />
+      <workItem from="1644555241591" duration="6892000" />
     </task>
     <servers />
   </component>
