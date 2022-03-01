@@ -111,7 +111,7 @@ function LayoutPanel() {
   )
 }
 
-function NonTerminal({ item, level, setSelectedComponent }) {
+function TreeNode({ item, level, setSelectedComponent }) {
   if (!item.children) {
     return <div onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSelectedComponent(item) }}>{item.name}</div>
   }
@@ -121,7 +121,7 @@ function NonTerminal({ item, level, setSelectedComponent }) {
       <Box sx={{ paddingLeft: '1rem' }}>
         {
           item.children.map((child, i) => (
-            <NonTerminal key={`${level}-${i}`} item={child} level={level + 1} setSelectedComponent={setSelectedComponent} />
+            <TreeNode key={`${level}-${i}`} item={child} level={level + 1} setSelectedComponent={setSelectedComponent} />
           ))
         }
       </Box>
@@ -135,7 +135,7 @@ function TreePanel({ layout, setSelectedComponent }) {
       <div>Tree</div>
       {
         layout.map((item, i) => (
-          <NonTerminal key={i} item={item} level={1} setSelectedComponent={setSelectedComponent} />
+          <TreeNode key={i} item={item} level={1} setSelectedComponent={setSelectedComponent} />
         ))
       }
     </div>
