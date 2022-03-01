@@ -4,7 +4,7 @@ export default function () {
   return (
     <Header height={60} padding="xs">
       <Group>
-        <Avatar src={null} alt="no image here" color="green" />
+        <Avatar src={"/src/favicon.svg"} alt="no image here" color="green" />
         <Title order={4}>App Inventor Modern</Title>
       </Group>
     </Header>
