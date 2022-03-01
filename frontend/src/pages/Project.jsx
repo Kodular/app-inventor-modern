@@ -6,6 +6,7 @@ import { useMemo } from 'react';
 import { MdDesignServices } from 'react-icons/md';
 import { HiOutlinePuzzle } from 'react-icons/hi';
 import BlocksEditor from '../components/BlocksEditor';
+import Designer from '../components/Designer';
 
 export default function () {
   const params = useParams()
@@ -20,7 +21,7 @@ export default function () {
       })}
     >
       <Tabs position="right">
-        <Tabs.Tab label="Designer" icon={<MdDesignServices />}>Designer</Tabs.Tab>
+        <Tabs.Tab label="Designer" icon={<MdDesignServices />}><Designer /></Tabs.Tab>
         <Tabs.Tab label="Blocks" icon={<HiOutlinePuzzle />}><BlocksEditor /></Tabs.Tab>
       </Tabs>
     </AppShell>
