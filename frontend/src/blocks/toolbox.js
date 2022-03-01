@@ -49,5 +49,37 @@ export const toolboxCategories = {
         },
       ],
     },
+    {
+      "kind": "category",
+      "name": "Components",
+      "expanded": "true",
+      "contents": [
+        {
+          "kind": "block",
+          "type": "return"
+        },
+        {
+          "kind": "category",
+          "name": "Button",
+          "contents": [
+            {
+              "kind": "block",
+              "type": "new_boundary_function"
+            }
+          ]
+        },
+        {
+          "kind": "category",
+          "name": "Input",
+          "contents": [
+            {
+              "kind": "block",
+              "type": "return"
+            }
+          ]
+        }
+      ]
+    }
+
   ],
 };
