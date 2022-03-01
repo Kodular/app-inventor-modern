@@ -1,37 +1,7 @@
-import { Box, Grid, Group, List } from "@mantine/core";
+import { Box, Grid, Group, Paper, Center } from "@mantine/core";
 import { useListState } from "@mantine/hooks";
 import { useEffect, useState } from "react";
 import { components } from "../blocks/components";
-
-export default function () {
-  const [values, handlers] = useListState()
-  const [selectedComponent, setSelectedComponent] = useState(null)
-  return (
-    <Grid>
-      <Grid.Col span={2}><ComponentsPanel /></Grid.Col>
-      <Grid.Col span={6}>layout</Grid.Col>
-      <Grid.Col span={2}><TreePanel setSelectedComponent={setSelectedComponent} /></Grid.Col>
-      <Grid.Col span={2}><PropertiesPanel component={selectedComponent} /></Grid.Col>
-    </Grid>
-  )
-}
-
-function ComponentsPanel() {
-  return (
-    <div>
-      <div>Components</div>
-      <Group direction="column" grow>
-        {
-          Object.keys(components).map((component, i) => (
-            <Box sx={{ padding: 8, backgroundColor: 'white', border: '1px solid #eee' }} key={i}>
-              {component}
-            </Box>
-          ))
-        }
-      </Group>
-    </div>
-  )
-}
 
 const testlayout = [
   components.button,
@@ -55,6 +25,46 @@ const testlayout = [
   }
 ]
 
+export default function () {
+  const [values, handlers] = useListState()
+  const [selectedComponent, setSelectedComponent] = useState(null)
+  return (
+    <Grid>
+      <Grid.Col span={2}><ComponentsPanel /></Grid.Col>
+      <Grid.Col span={6}><LayoutPanel /></Grid.Col>
+      <Grid.Col span={2}><TreePanel setSelectedComponent={setSelectedComponent} layout={testlayout} /></Grid.Col>
+      <Grid.Col span={2}><PropertiesPanel component={selectedComponent} /></Grid.Col>
+    </Grid>
+  )
+}
+
+function ComponentsPanel() {
+  return (
+    <div>
+      <div>Components</div>
+      <Group direction="column" grow>
+        {
+          Object.keys(components).map((component, i) => (
+            <Box sx={{ padding: 8, backgroundColor: 'white', border: '1px solid #eee' }} key={i}>
+              {component}
+            </Box>
+          ))
+        }
+      </Group>
+    </div>
+  )
+}
+
+function LayoutPanel() {
+  return (
+    <Center>
+      <Paper sx={{ height: 540, width: 320 }} shadow="xs" withBorder>
+        test
+      </Paper>
+    </Center>
+  )
+}
+
 function NonTerminal({ item, level, setSelectedComponent }) {
   if (!item.children) {
     return <div onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSelectedComponent(item) }}>{item.name}</div>
@@ -73,7 +83,7 @@ function NonTerminal({ item, level, setSelectedComponent }) {
   )
 }
 
-function TreePanel({ layout = testlayout, setSelectedComponent }) {
+function TreePanel({ layout, setSelectedComponent }) {
   return (
     <div>
       <div>Tree</div>
