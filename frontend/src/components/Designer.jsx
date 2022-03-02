@@ -10,17 +10,17 @@ const testlayout = [
   components.button,
   components.input,
   {
-    ...components.column, children: [
+    ...components.row, children: [
       components.button,
       components.input,
     ]
   },
   {
-    ...components.row, children: [
+    ...components.column, children: [
       components.button,
-      components.input,
       {
-        ...components.column, children: [
+        ...components.row, children: [
+          components.button,
           components.button,
         ],
       }
@@ -29,12 +29,13 @@ const testlayout = [
 ]
 
 export default function () {
+  const [layout, setLayout] = useState(testlayout)
   const [selectedComponent, setSelectedComponent] = useState(null)
   return (
     <DndProvider backend={HTML5Backend}>
       <Grid>
         <Grid.Col span={2}><ComponentsPanel /></Grid.Col>
-        <Grid.Col span={6}><LayoutPanel /></Grid.Col>
+        <Grid.Col span={6}><LayoutPanel layout={layout} setLayout={setLayout} /></Grid.Col>
         <Grid.Col span={2}><TreePanel setSelectedComponent={setSelectedComponent} layout={testlayout} /></Grid.Col>
         <Grid.Col span={2}><PropertiesPanel component={selectedComponent} /></Grid.Col>
       </Grid>
@@ -58,27 +59,25 @@ function ComponentsPanel() {
 }
 
 function ComponentPanelItem({ component }) {
-  const uuid = useId()
+  // const uuid = useId()
 
   const [{ isDragging }, drag] = useDrag({
     type: "component",
-    item: {
-      component,
-    },
+    item: component,
     collect: monitor => ({
       isDragging: monitor.isDragging()
     })
   })
 
   return (
-    <Box sx={{ padding: 8, backgroundColor: 'white', border: '1px solid #eee'}} ref={drag}>
+    <Box sx={{ padding: 8, backgroundColor: 'white', border: '1px solid #eee' }} ref={drag}>
       {component}
     </Box>
   )
 }
 
-function LayoutPanel() {
-  const [values, handlers] = useListState()
+function LayoutPanel({ layout }) {
+  const [values, handlers] = useListState(layout)
 
   useEffect(() => {
     console.log('LayoutPanel', values)
@@ -101,7 +100,7 @@ function LayoutPanel() {
         <Group direction="column">
           {
             values.map((item, i) => {
-              const MockComponent = mocks[item.component]
+              const MockComponent = mocks[item.name]
               return <MockComponent key={i} item={item} />
             })
           }

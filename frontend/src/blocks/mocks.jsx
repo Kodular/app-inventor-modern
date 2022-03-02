@@ -37,7 +37,7 @@ function MockInput({ item }) {
 }
 
 function MockRow({ item }) {
-  const [values, handlers] = useListState()
+  const [values, handlers] = useListState(item.children)
 
   const [{ isDragging }, drag] = useDrag({
     type: "component",
@@ -62,7 +62,7 @@ function MockRow({ item }) {
     <Group ref={(node) => drag(drop(node))} spacing="xs" p={4} noWrap sx={{ minHeight: 36, minWidth: 36, border: isOver ? '2px solid blue' : '1px solid #eee', overflowX: 'auto' }}>
       {
         values.map((item, i) => {
-          const MockComponent = mocks[item.component]
+          const MockComponent = mocks[item.name]
           return <MockComponent key={i} item={item} />
         })
       }
@@ -71,7 +71,7 @@ function MockRow({ item }) {
 }
 
 function MockColumn({ item }) {
-  const [values, handlers] = useListState()
+  const [values, handlers] = useListState(item.children)
 
   const [{ isDragging }, drag] = useDrag({
     type: "component",
@@ -96,7 +96,7 @@ function MockColumn({ item }) {
     <Group ref={(node) => drag(drop(node))} direction="column" spacing="xs" p={4} noWrap sx={{ minHeight: 36, minWidth: 36, border: isOver ? '2px solid blue' : '1px solid #eee', overflowX: 'auto' }}>
       {
         values.map((item, i) => {
-          const MockComponent = mocks[item.component]
+          const MockComponent = mocks[item.name]
           return <MockComponent key={i} item={item} />
         })
       }
