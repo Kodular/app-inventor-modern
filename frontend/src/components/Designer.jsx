@@ -1,62 +1,18 @@
-import { Box, Grid, Group, Paper, Center, Divider } from "@mantine/core";
-import { useEffect, useReducer, useState } from "react";
+import { Box, Grid, Group, Paper, Center } from "@mantine/core";
 import { DndProvider, useDrag, useDrop } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { components } from "../blocks/components";
-import { mocks } from "../blocks/mocks";
-import * as immutable from 'object-path-immutable'
-
-const testlayout = [
-  components.button,
-  components.input,
-  {
-    ...components.row, children: [
-      components.button,
-      components.input,
-    ]
-  },
-  {
-    ...components.column, children: [
-      components.button,
-      {
-        ...components.row, children: [
-          components.button,
-          components.button,
-        ],
-      }
-    ]
-  }
-]
-
-
-function layoutReducer(layout, action) {
-  console.log(action)
-  switch (action.type) {
-    case 'ADD_COMPONENT': {
-      const { componentType, path, order } = action
-      const newLayout = immutable.insert(layout, path, components[componentType], order)
-      return newLayout
-    }
-    case 'REMOVE_COMPONENT':
-      return layout.filter((item, i) => i !== action.index)
-    case 'MOVE_COMPONENT':
-      return move(layout, action.from, action.to)
-    default:
-      return layout
-  }
-}
+import { mocks, MockScreen } from "../blocks/mocks";
+import { useSelector } from "../state/store";
 
 export default function () {
-  const [layout, dispatchLayout] = useReducer(layoutReducer, testlayout)
-  const [selectedComponent, setSelectedComponent] = useState(null)
-
   return (
     <DndProvider backend={HTML5Backend}>
       <Grid>
         <Grid.Col span={2}><ComponentsPanel /></Grid.Col>
-        <Grid.Col span={6}><LayoutPanel layout={layout} dispatchLayout={dispatchLayout} /></Grid.Col>
-        <Grid.Col span={2}><TreePanel setSelectedComponent={setSelectedComponent} layout={layout} /></Grid.Col>
-        <Grid.Col span={2}><PropertiesPanel component={selectedComponent} /></Grid.Col>
+        <Grid.Col span={6}><LayoutPanel /></Grid.Col>
+        <Grid.Col span={2}><TreePanel /></Grid.Col>
+        <Grid.Col span={2}><PropertiesPanel /></Grid.Col>
       </Grid>
     </DndProvider>
   )
@@ -68,8 +24,8 @@ function ComponentsPanel() {
       <div>Components</div>
       <Group direction="column" grow>
         {
-          Object.keys(components).map((componentType, i) => (
-            <ComponentPanelItem componentType={componentType} key={i} />
+          Object.keys(components).map((type, i) => (
+            <ComponentPanelItem type={type} key={i} />
           ))
         }
       </Group>
@@ -77,46 +33,34 @@ function ComponentsPanel() {
   )
 }
 
-function ComponentPanelItem({ componentType }) {
+function ComponentPanelItem({ type }) {
 
   const [collected, drag] = useDrag({
     type: "component",
     item: {
-      componentType
+      type
     }
   })
 
   return (
     <Box sx={{ padding: 8, backgroundColor: 'white', border: '1px solid #eee' }} ref={drag}>
-      {componentType}
+      {type}
     </Box>
   )
 }
 
-function LayoutPanel({ layout, dispatchLayout }) {
+function LayoutPanel() {
   return (
     <Center>
       <Paper sx={{ height: 540, width: 320 }} shadow="xs" withBorder>
-        <Group direction="column" spacing={0}>
-          <DropZone key={0} path={[]} order={0} dispatchLayout={dispatchLayout} />
-          {
-            layout.map((item, i) => {
-              const MockComponent = mocks[item.name]
-              const path = []
-              const order = i * 2 + 1
-              return [
-                <MockComponent key={order} item={item} path={path} order={i+1} dispatchLayout={dispatchLayout} />,
-                <DropZone key={order + 1} path={path} order={i+1} dispatchLayout={dispatchLayout} />
-              ]
-            })
-          }
-        </Group>
+        <MockScreen />
       </Paper>
     </Center>
   )
 }
 
-function DropZone({ vertical, path, order, dispatchLayout }) {
+export function DropZone({ vertical, parentId, order }) {
+  const addComponent = useSelector(state => state.addComponent)
 
   const [{ isOver }, drop] = useDrop({
     accept: "component",
@@ -125,8 +69,11 @@ function DropZone({ vertical, path, order, dispatchLayout }) {
     }),
     canDrop: (item, monitor) => monitor.isOver({ shallow: true }),
     drop: (item) => {
-      dispatchLayout({ type: 'ADD_COMPONENT', componentType: item.componentType, path, order })
-    }
+      addComponent(item, parentId, order)
+    },
+    // hover: (item, monitor) => {
+    //   console.log('dropzone', monitor.getItem())
+    // }
   })
 
   const style = vertical
@@ -134,21 +81,30 @@ function DropZone({ vertical, path, order, dispatchLayout }) {
     : { height: '5px', width: '100%' }
 
   return (
-    <Box ref={drop} sx={{ ...style, backgroundColor: isOver ? 'blue' : '' }} />
+    <Box ref={drop} sx={{ ...style, backgroundColor: isOver ? 'blue' : 'red' }} />
   )
 }
 
-function TreeNode({ item, level, setSelectedComponent }) {
-  if (!item.children) {
-    return <div onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSelectedComponent(item) }}>{item.name}</div>
+function TreeNode({ componentId }) {
+  const component = useSelector(state => state.layout.components[componentId])
+  const selectComponent = useSelector(state => state.selectComponent)
+
+
+  function onSelect(e) {
+    e.stopPropagation()
+    selectComponent(componentId)
+  }
+
+  if (!component.children) {
+    return <div onClick={onSelect}>{componentId}</div>
   }
   return (
-    <div onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSelectedComponent(item) }}>
-      {item.name}
+    <div onClick={onSelect}>
+      {componentId}
       <Box sx={{ paddingLeft: '1rem' }}>
         {
-          item.children.map((child, i) => (
-            <TreeNode key={`${level}-${i}`} item={child} level={level + 1} setSelectedComponent={setSelectedComponent} />
+          component.children.map((childId, i) => (
+            <TreeNode componentId={childId} key={i} />
           ))
         }
       </Box>
@@ -156,28 +112,28 @@ function TreeNode({ item, level, setSelectedComponent }) {
   )
 }
 
-function TreePanel({ layout, setSelectedComponent }) {
+function TreePanel() {
+  const rootNode = useSelector(state => state.layout.components[state.layout.rootId])
+
   return (
     <div>
       <div>Tree</div>
-      {
-        layout.map((item, i) => (
-          <TreeNode key={i} item={item} level={1} setSelectedComponent={setSelectedComponent} />
-        ))
-      }
+      <TreeNode componentId={rootNode.id} />
     </div>
   )
 }
 
-function PropertiesPanel({ component }) {
+function PropertiesPanel() {
+  const component = useSelector(state => state.layout.components[state.layout.selected[0]])
+
   if (!component) {
     return "select a component";
   }
   return (
     <div>
-      <div>{component.name} Properties</div>
+      <div>{component.id} Properties</div>
       <Group direction="column" grow>
-        {component.properties.map((property, i) => (
+        {(component.properties || []).map((property, i) => (
           <Box sx={{ padding: 8, backgroundColor: 'white', border: '1px solid #eee' }} key={i}>
             {property.name}
           </Box>
