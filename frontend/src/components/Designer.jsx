@@ -77,7 +77,7 @@ export function DropZone({ vertical, parentId, order }) {
   })
 
   const style = vertical
-    ? { width: '5px', height: '100%' }
+    ? { width: '5px', height: '100%', minHeight: '2rem' }
     : { height: '5px', width: '100%' }
 
   return (
