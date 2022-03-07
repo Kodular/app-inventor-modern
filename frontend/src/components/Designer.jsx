@@ -81,7 +81,7 @@ export function DropZone({ vertical, parentId, order }) {
     : { height: '5px', width: '100%' }
 
   return (
-    <Box ref={drop} sx={{ ...style, backgroundColor: isOver ? 'blue' : 'red' }} />
+    <Box ref={drop} sx={{ ...style, backgroundColor: isOver ? 'blue' : '' }} />
   )
 }
 

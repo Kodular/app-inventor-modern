@@ -1,5 +1,4 @@
 import { Button, Group, Input } from "@mantine/core"
-import { useListState } from "@mantine/hooks"
 import { useDrag, useDrop } from "react-dnd"
 import { DropZone } from "../components/Designer"
 import { useSelector, useStore } from "../state/store"
@@ -28,7 +27,7 @@ export function MockScreen() {
 
   if (rootComponent.children.length === 0) {
     return (
-      <Group direction="column" spacing={0} ref={drop} sx={{height: '100%', width: '100%'}}>
+      <Group direction="column" spacing={0} ref={drop} sx={{ height: '100%', width: '100%' }}>
       </Group>
     )
   }
@@ -42,7 +41,7 @@ export function MockScreen() {
           const MockComponent = mocks[componentType]
           const order = i * 2 + 1
           return [
-            <MockComponent key={order} item={childId} />,
+            <MockComponent key={order} componentId={childId} />,
             <DropZone key={order + 1} parentId={rootComponent.id} order={order} />
           ]
         })
@@ -51,64 +50,81 @@ export function MockScreen() {
   )
 }
 
-function MockButton({ item }) {
+function MockButton({ componentId }) {
+  const component = useSelector(state => state.layout.components[componentId], [componentId])
+
   const [{ isDragging }, drag] = useDrag({
     type: "component",
-    item,
+    item: componentId,
     collect: monitor => ({
       isDragging: monitor.isDragging()
     })
   })
+
+  console.log('MB', componentId)
+
   return (
-    <Button ref={drag} sx={{ opacity: isDragging ? 0 : 1 }}>Button</Button>
+    <Button ref={drag} sx={{ opacity: isDragging ? 0 : 1 }}>{componentId}</Button>
   )
 }
 
-function MockInput({ item }) {
+function MockInput({ componentId }) {
+  const component = useSelector(state => state.layout.components[componentId], [componentId])
+
   const [{ isDragging }, drag] = useDrag({
     type: "component",
-    item,
+    item: componentId,
     collect: monitor => ({
       isDragging: monitor.isDragging()
     })
   })
+
   return (
-    <Input variant="filled" placeholder="input" ref={drag} />
+    <Input variant="filled" placeholder={component.id} ref={drag} />
   )
 }
 
-function MockRow({ item }) {
+function MockRow({ componentId }) {
+  const component = useSelector(state => state.layout.components[componentId], [componentId])
+  const addComponent = useSelector(state => state.addComponent)
 
   const [{ isDragging }, drag] = useDrag({
     type: "component",
-    item,
+    item: componentId,
     collect: monitor => ({
       isDragging: monitor.isDragging()
     })
   })
 
-  // const [{ isOver }, drop] = useDrop({
-  //   accept: "component",
-  //   collect: monitor => ({
-  //     isOver: monitor.isOver({ shallow: true }),
-  //   }),
-  //   canDrop: (item, monitor) => monitor.isOver({ shallow: true }),
-  //   drop: (item) => {
-  //     handlers.append(item)
-  //   }
-  // })
+  const [, drop] = useDrop({
+    accept: "component",
+    canDrop: (item, monitor) => monitor.isOver({ shallow: true }) && component.children.length === 0,
+    // hover(item) {
+    //   console.log('hovering', item)
+    // },
+    drop(item) {
+      addComponent(item, component.id, 0)
+    }
+  })
+
+  if (component.children.length === 0) {
+    return (
+      <Group spacing={0} ref={drop} sx={{ minHeight: 36, width: '100%', overflowX: 'auto', border: '1px solid #eee' }}>
+      </Group>
+    )
+  }
 
   return (
-    <Group ref={drag} spacing={0} noWrap sx={{ minHeight: 36, minWidth: 36, overflowX: 'auto', border: '1px solid #eee' }}>
-      <DropZone key={0} path={[]} order={0} vertical />
+    <Group ref={drag} spacing={0} noWrap sx={{ minHeight: 36, width: '100%', overflowX: 'auto', border: '1px solid #eee' }}>
+      <DropZone key={0} parentId={component.id} order={0} vertical />
       {
-        item.children.map((item, i) => {
-          const MockComponent = mocks[item.name]
-          const path = []
+        component.children.map((childId, i) => {
+          const componentType = useStore.getState().layout.components[childId].type
+          const MockComponent = mocks[componentType]
           const order = i * 2 + 1
           return [
-            <MockComponent key={order} item={item} path={path} order={i + 1} />,
-            <DropZone key={order + 1} parentId={""} order={i + 1} vertical />
+            <MockComponent key={order} componentId={childId} />,
+            <DropZone key={order + 1} parentId={component.id} order={order} vertical />
           ]
         })
       }
@@ -116,34 +132,48 @@ function MockRow({ item }) {
   )
 }
 
-function MockColumn({ item }) {
-  const [values, handlers] = useListState(item.children)
+function MockColumn({ componentId }) {
+  const component = useSelector(state => state.layout.components[componentId], [componentId])
+  const addComponent = useSelector(state => state.addComponent)
 
   const [{ isDragging }, drag] = useDrag({
     type: "component",
-    item,
+    item: componentId,
     collect: monitor => ({
       isDragging: monitor.isDragging()
     })
   })
 
-  const [{ isOver }, drop] = useDrop({
+  const [, drop] = useDrop({
     accept: "component",
-    collect: monitor => ({
-      isOver: monitor.isOver({ shallow: true }),
-    }),
-    canDrop: (item, monitor) => monitor.isOver({ shallow: true }),
-    drop: (item) => {
-      handlers.append(item)
+    canDrop: (item, monitor) => monitor.isOver({ shallow: true }) && component.children.length === 0,
+    // hover(item) {
+    //   console.log('hovering', item)
+    // },
+    drop(item) {
+      addComponent(item, component.id, 0)
     }
   })
 
+  if (component.children.length === 0) {
+    return (
+      <Group direction="column" spacing={0} ref={drop} sx={{ minWidth: 72, minHeight: 36, overflowX: 'auto', border: '1px solid #eee' }}>
+      </Group>
+    )
+  }
+
   return (
-    <Group ref={(node) => drag(drop(node))} direction="column" spacing="xs" p={4} noWrap sx={{ minHeight: 36, minWidth: 36, border: isOver ? '2px solid blue' : '1px solid #eee', overflowX: 'auto' }}>
+    <Group ref={drag} direction="column" spacing={0} noWrap sx={{ minHeight: 36, minWidth: 72, border: '1px solid #eee' }}>
+      <DropZone key={0} parentId={component.id} order={0} />
       {
-        values.map((item, i) => {
-          const MockComponent = mocks[item.name]
-          return <MockComponent key={i} item={item} />
+        component.children.map((childId, i) => {
+          const componentType = useStore.getState().layout.components[childId].type
+          const MockComponent = mocks[componentType]
+          const order = i * 2 + 1
+          return [
+            <MockComponent key={order} componentId={childId} />,
+            <DropZone key={order + 1} parentId={component.id} order={order} />
+          ]
         })
       }
     </Group>

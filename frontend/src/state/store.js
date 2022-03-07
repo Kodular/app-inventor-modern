@@ -20,7 +20,7 @@ export const useStore = createStore(
     addComponent(item, parentId, order = -1) {
       set(state => {
         const generatedId = genComponentId(item.type)
-        state.layout.components[generatedId] = { ...item, id: generatedId }
+        state.layout.components[generatedId] = { ...item, id: generatedId, children: [] }
         state.layout.components[parentId].children.splice(order, 0, generatedId)
       })
     },
