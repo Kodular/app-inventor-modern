@@ -17,7 +17,7 @@ export const useStore = createStore(
         }
       }
     },
-    addComponent(item, parentId, order = -1) {
+    addComponent(item, parentId, order = Infinity) {
       set(state => {
         const generatedId = genComponentId(item.type)
         state.layout.components[generatedId] = { ...item, id: generatedId, children: [] }

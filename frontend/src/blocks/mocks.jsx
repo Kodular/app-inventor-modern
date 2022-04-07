@@ -16,12 +16,12 @@ export function MockScreen() {
 
   const [, drop] = useDrop({
     accept: "component",
-    canDrop: (item, monitor) => true || monitor.isOver({ shallow: true }) && rootComponent.children.length === 0,
-    // hover(item) {
-    //   console.log('hovering', item)
-    // },
+    canDrop: (item, monitor) => monitor.isOver({ shallow: true }),
+    hover(item) {
+      console.log('hovering', item)
+    },
     drop(item) {
-      addComponent(item, rootComponent.id, 0)
+      addComponent(item, rootComponent.id)
     }
   })
 
@@ -33,7 +33,7 @@ export function MockScreen() {
   }
 
   return (
-    <Group direction="column" spacing={0}>
+    <Group direction="column" spacing={0} ref={drop} sx={{height: '100%'}}>
       <DropZone key={0} parentId={rootComponent.id} order={0} />
       {
         rootComponent.children.map((childId, i) => {
@@ -98,7 +98,7 @@ function MockRow({ componentId }) {
 
   const [, drop] = useDrop({
     accept: "component",
-    canDrop: (item, monitor) => monitor.isOver({ shallow: true }) && component.children.length === 0,
+    canDrop: (item, monitor) => monitor.isOver({ shallow: true }),
     // hover(item) {
     //   console.log('hovering', item)
     // },
