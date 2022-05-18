@@ -1,30 +1,55 @@
-import { Box, Grid, Group, Paper, Center } from "@mantine/core";
-import { DndProvider, useDrag, useDrop } from "react-dnd";
-import { HTML5Backend } from "react-dnd-html5-backend";
-import { components } from "../blocks/components";
-import { mocks, MockScreen } from "../blocks/mocks";
+import { Box, Grid, Group, Paper, Center, Button } from "@mantine/core";
+import { Editor, Frame, Element, useEditor } from "@craftjs/core";
+import { TextComponent, ButtonComponent, InputComponent, Container } from "../blocks/mocks";
 import { useSelector } from "../state/store";
+
+const comps = {
+  TextComponent,
+  ButtonComponent,
+  InputComponent,
+  Container,
+}
+
+const compdefaults = {
+  'TextComponent': <TextComponent text="Hello K2" />,
+  'ButtonComponent': <ButtonComponent text="Hello K2" />,
+  'InputComponent': <InputComponent text="Hello K2" />,
+  'Container': <Container>I'm lonely</Container>,
+}
+
+
+const SaveButton = () => {
+  const { query } = useEditor();
+  return (
+    <Button
+      onClick={() => console.log(JSON.parse(query.serialize(), null, 2))}
+    >
+      Get JSON
+    </Button>
+  )
+}
 
 export default function () {
   return (
-    <DndProvider backend={HTML5Backend}>
+    <Editor resolver={comps}>
       <Grid>
         <Grid.Col span={2}><ComponentsPanel /></Grid.Col>
         <Grid.Col span={6}><LayoutPanel /></Grid.Col>
         <Grid.Col span={2}><TreePanel /></Grid.Col>
         <Grid.Col span={2}><PropertiesPanel /></Grid.Col>
       </Grid>
-    </DndProvider>
+    </Editor>
   )
 }
 
 function ComponentsPanel() {
   return (
     <div>
+      <SaveButton />
       <div>Components</div>
       <Group direction="column" grow>
         {
-          Object.keys(components).map((type, i) => (
+          Object.keys(compdefaults).map((type, i) => (
             <ComponentPanelItem type={type} key={i} />
           ))
         }
@@ -35,15 +60,12 @@ function ComponentsPanel() {
 
 function ComponentPanelItem({ type }) {
 
-  const [collected, drag] = useDrag({
-    type: "component",
-    item: {
-      type
-    }
-  })
+  const { connectors } = useEditor();
 
   return (
-    <Box sx={{ padding: 8, backgroundColor: 'white', border: '1px solid #eee' }} ref={drag}>
+    <Box
+      ref={(ref) => connectors.create(ref, compdefaults[type])}
+      sx={{ padding: 8, backgroundColor: 'white', border: '1px solid #eee' }}>
       {type}
     </Box>
   )
@@ -53,35 +75,11 @@ function LayoutPanel() {
   return (
     <Center>
       <Paper sx={{ height: 540, width: 320 }} shadow="xs" withBorder>
-        <MockScreen />
+        <Frame>
+          <Element is={Container} canvas />
+        </Frame>
       </Paper>
     </Center>
-  )
-}
-
-export function DropZone({ vertical, parentId, order }) {
-  const addComponent = useSelector(state => state.addComponent)
-
-  const [{ isOver }, drop] = useDrop({
-    accept: "component",
-    collect: monitor => ({
-      isOver: monitor.isOver({ shallow: true }),
-    }),
-    canDrop: (item, monitor) => monitor.isOver({ shallow: true }),
-    drop: (item) => {
-      addComponent(item, parentId, order)
-    },
-    // hover: (item, monitor) => {
-    //   console.log('dropzone', monitor.getItem())
-    // }
-  })
-
-  const style = vertical
-    ? { width: '5px', height: '100%', minHeight: '2rem' }
-    : { height: '5px', width: '100%' }
-
-  return (
-    <Box ref={drop} sx={{ ...style, backgroundColor: isOver ? 'blue' : '' }} />
   )
 }
 
