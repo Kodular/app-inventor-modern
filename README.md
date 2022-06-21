@@ -1,7 +1,8 @@
-# App Inventor Modern edition
+App Inventor Modern edition
 ---
+
 AIM ;)
 
-How App Inventor would look like if it were written in 2021.
+How App Inventor would look like if it were written in the 20s.
 
-⚠ WARNING: This project is highly opioniated and is in extremely experimental phase.
+> **Warning** This project is highly opioniated and is in extremely experimental phase.
