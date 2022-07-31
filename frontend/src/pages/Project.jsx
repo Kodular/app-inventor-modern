@@ -20,9 +20,19 @@ export default function () {
         main: { backgroundColor: theme.colorScheme === 'dark' ? theme.colors.dark[8] : theme.colors.gray[0] },
       })}
     >
-      <Tabs position="right">
-        <Tabs.Tab label="Designer" icon={<MdDesignServices />}><Designer /></Tabs.Tab>
-        <Tabs.Tab label="Blocks" icon={<HiOutlinePuzzle />}><BlocksEditor /></Tabs.Tab>
+      <Tabs defaultValue="designer">
+        <Tabs.List position="right">
+          <Tabs.Tab value="designer" icon={<MdDesignServices />}>Designer</Tabs.Tab>
+          <Tabs.Tab value="blocks" icon={<HiOutlinePuzzle />}>BlocksEditor</Tabs.Tab>
+        </Tabs.List>
+
+        <Tabs.Panel value="designer">
+          <Designer />
+        </Tabs.Panel>
+
+        <Tabs.Panel value="blocks">
+          <BlocksEditor />
+        </Tabs.Panel>
       </Tabs>
     </AppShell>
   )
