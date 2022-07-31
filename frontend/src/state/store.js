@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import create from 'zustand'
-import { produce } from 'immer'
+import { log, immer, pipe } from './utils'
 
 const createStore = pipe(immer, log, create)
 
@@ -62,29 +62,6 @@ export const useStore = createStore(
 
 export function useSelector(selector, deps) {
   return useStore(useCallback(selector, deps))
-}
-
-// Utils
-
-function log(config) {
-  return (set, get, api) => config(args => {
-    console.log("🔴 applying", args)
-    set(args)
-    console.log("🔴 new state", get().layout.components)
-  }, get, api)
-}
-
-function immer(config) {
-  return (set, get, api) => config((partial, replace) => {
-    const nextState = typeof partial === 'function'
-      ? produce(partial)
-      : partial
-    return set(nextState, replace)
-  }, get, api)
-}
-
-function pipe(...fns) {
-  return (x) => fns.reduce((v, f) => f(v), x)
 }
 
 const idMap = {}
