@@ -1,7 +1,7 @@
 import { Box, Grid, Group, Paper, Center, Button } from "@mantine/core";
 import { Editor, Frame, Element, useEditor } from "@craftjs/core";
-import { TextComponent, ButtonComponent, InputComponent, Container } from "../blocks/mocks";
-import { useSelector } from "../state/store";
+import { TextComponent, ButtonComponent, InputComponent, Container } from "@/blocks/mocks";
+import { useSelector } from "@/state/store";
 
 const comps = {
   TextComponent,

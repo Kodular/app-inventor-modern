@@ -1,7 +1,7 @@
 import { AppShell, Navbar, SimpleGrid, Avatar } from '@mantine/core';
-import { projects } from '../api/projects';
-import ProjectCard from '../components/ProjectCard';
-import Header from '../components/Header';
+import { projects } from '@/api/projects';
+import ProjectCard from '@/components/ProjectCard';
+import Header from '@/components/Header';
 
 export default function Main() {
   return (

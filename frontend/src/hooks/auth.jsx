@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
-import { fakeAuthProvider } from "~/api/auth";
+import { fakeAuthProvider } from "@/api/auth";
 
 let AuthContext = createContext(null);
 

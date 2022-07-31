@@ -1,12 +1,12 @@
 import { AppShell, Navbar, SimpleGrid, Avatar, Tabs, Button } from '@mantine/core';
-import { projects } from '../api/projects';
-import Header from '../components/Header';
+import { projects } from '@/api/projects';
+import Header from '@/components/Header';
 import { useParams } from 'react-router-dom';
 import { useMemo } from 'react';
 import { MdDesignServices } from 'react-icons/md';
 import { HiOutlinePuzzle } from 'react-icons/hi';
-import BlocksEditor from '../components/BlocksEditor';
-import Designer from '../components/Designer';
+import BlocksEditor from '@/components/BlocksEditor';
+import Designer from '@/components/Designer';
 
 export default function () {
   const params = useParams()

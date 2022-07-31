@@ -1,8 +1,8 @@
 import { BlocklyWorkspace } from "react-blockly";
 import Blockly from "blockly";
 import { useEffect, useState } from "react";
-import '~/blocks/customBlocks'
-import { initialXml, toolboxCategories } from "../blocks/toolbox";
+import '@/blocks/customBlocks'
+import { initialXml, toolboxCategories } from "@/blocks/toolbox";
 
 export default function () {
   useEffect(() => {
