@@ -1,29 +1,8 @@
 import { Box, Button, Center, Grid, Paper, Stack } from "@mantine/core"
 import { Editor, Element, Frame, useEditor } from "@craftjs/core"
 import React, { useMemo } from "react"
-import { TextComponent } from "@/mocks/TextComponent"
-import { ButtonComponent } from "@/mocks/ButtonComponent"
-import { InputComponent } from "@/mocks/InputComponent"
+import { mocks } from "@/mocks"
 import { ContainerComponent } from "@/mocks/ContainerComponent"
-
-const comps: Record<string, { componentElement: React.ElementType, defaultInstance: React.ReactElement }> = {
-  TextComponent: {
-    componentElement: TextComponent,
-    defaultInstance: <TextComponent text="Hello K2"/>
-  },
-  ButtonComponent: {
-    componentElement: ButtonComponent,
-    defaultInstance: <ButtonComponent text="Hello K2"/>
-  },
-  InputComponent: {
-    componentElement: InputComponent,
-    defaultInstance: <InputComponent text="Hello K2"/>
-  },
-  Container: {
-    componentElement: ContainerComponent,
-    defaultInstance: <Element id={"lol"} canvas is={ContainerComponent}>I m lonely</Element>
-  },
-}
 
 const SaveButton = () => {
   const { query } = useEditor()
@@ -38,7 +17,7 @@ const SaveButton = () => {
 
 export default function () {
   // keep only component property on comp object
-  const compResolver = useMemo(() => Object.fromEntries(Object.entries(comps).map(([key, value]) => [key, value.componentElement])), [comps])
+  const compResolver = useMemo(() => Object.fromEntries(Object.entries(mocks).map(([key, { componentElement }]) => [key, componentElement])), [mocks])
   return (
     <Editor resolver={compResolver}>
       <Grid>
@@ -59,7 +38,7 @@ function ComponentsPanel () {
       <div>Components</div>
       <Stack align={"stretch"}>
         {
-          Object.entries(comps).map(([type, { defaultInstance }], i) => (
+          Object.entries(mocks).map(([type, { defaultInstance }], i) => (
             <Button key={i}
                     ref={(ref: HTMLButtonElement) => connectors.create(ref, defaultInstance)}
             >
@@ -81,7 +60,6 @@ function LayoutPanel () {
       }} shadow="xs" withBorder>
         <Frame>
           <Element canvas is={ContainerComponent} height="100%">
-            <TextComponent text={"Hello K2"}/>
           </Element>
         </Frame>
       </Paper>
