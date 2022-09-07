@@ -7,10 +7,11 @@
     "serve": "vite preview"
   },
   "dependencies": {
-    "@craftjs/core": "0.2.0-beta.6",
-    "@mantine/core": "^5.0.2",
-    "@mantine/hooks": "^5.0.2",
-    "blockly": "^8.0.3",
+    "@craftjs/core": "^0.2.0-beta.8",
+    "@mantine/core": "^5.2.6",
+    "@mantine/hooks": "^5.2.6",
+    "blockly": "^8.0.5",
+    "csstype": "^3.1.0",
     "immer": "^9.0.15",
     "object-path-immutable": "^4.1.2",
     "prop-types": "^15.8.1",
@@ -19,22 +20,22 @@
     "react-dom": "^18.2.0",
     "react-icons": "^4.4.0",
     "react-router-dom": "^6.3.0",
-    "zustand": "^4.0.0"
+    "zustand": "^4.1.1"
   },
   "devDependencies": {
-    "@types/node": "^18.7.8",
-    "@types/react": "^18.0.17",
+    "@types/node": "^18.7.15",
+    "@types/react": "^18.0.18",
     "@types/react-dom": "^18.0.6",
-    "@typescript-eslint/eslint-plugin": "^5.0.0",
-    "@vitejs/plugin-react": "^2.0.0",
-    "eslint": "^8.0.1",
+    "@typescript-eslint/eslint-plugin": "^5.36.2",
+    "@vitejs/plugin-react": "^2.1.0",
+    "eslint": "^8.23.0",
     "eslint-config-standard-with-typescript": "^22.0.0",
-    "eslint-plugin-import": "^2.25.2",
-    "eslint-plugin-n": "^15.0.0",
-    "eslint-plugin-promise": "^6.0.0",
-    "eslint-plugin-react": "^7.30.1",
+    "eslint-plugin-import": "^2.26.0",
+    "eslint-plugin-n": "^15.2.5",
+    "eslint-plugin-promise": "^6.0.1",
+    "eslint-plugin-react": "^7.31.7",
     "eslint-plugin-react-hooks": "^4.6.0",
-    "typescript": "^4.7.4",
-    "vite": "^3.0.4"
+    "typescript": "^4.8.2",
+    "vite": "^3.1.0"
   }
 }
