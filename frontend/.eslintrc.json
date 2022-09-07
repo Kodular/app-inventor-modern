@@ -17,6 +17,7 @@
     "react"
   ],
   "rules": {
-    "indent": ["error", 2]
+    "indent": ["error", 2],
+    "quotes": ["error", "double", { "avoidEscape": true, "allowTemplateLiterals": true }]
   }
 }
