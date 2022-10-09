@@ -1,10 +1,11 @@
-import { Avatar, Header, Title, Group } from "@mantine/core";
+import { Avatar, Group, Header, Title } from "@mantine/core"
+import logo from "@/logo.png"
 
 export default function () {
   return (
     <Header height={60} padding="xs">
       <Group>
-        <Avatar src={"/src/favicon.svg"} alt="no image here" color="green" />
+        <Avatar src={logo} alt="logo" color="green" />
         <Title order={4}>App Inventor Modern</Title>
       </Group>
     </Header>
