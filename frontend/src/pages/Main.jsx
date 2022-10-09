@@ -14,7 +14,7 @@ export default function Main() {
     >
       <SimpleGrid cols={6}>
         {projects.map((project, i) => (
-          <ProjectCard project={project} />
+          <ProjectCard project={project} key={i} />
         ))}
       </SimpleGrid>
     </AppShell>

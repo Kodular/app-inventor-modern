@@ -1,47 +1,7 @@
 export const projects = [
-{
-  id: 'vite-react-demo',
-  name: 'Vite React Demo',
-  description: 'A demo of Vite with React',
-},
   {
-    id: 'vite-react-demo',
-    name: 'Vite React Demo',
-    description: 'A demo of Vite with React',
-  },
-  {
-    id: 'vite-react-demo',
-    name: 'Vite React Demo',
-    description: 'A demo of Vite with React',
-  },
-  {
-    id: 'vite-react-demo',
-    name: 'Vite React Demo',
-    description: 'A demo of Vite with React',
-  },
-  {
-    id: 'vite-react-demo',
-    name: 'Vite React Demo',
-    description: 'A demo of Vite with React',
-  },
-  {
-    id: 'vite-react-demo',
-    name: 'Vite React Demo',
-    description: 'A demo of Vite with React',
-  },
-  {
-    id: 'vite-react-demo',
-    name: 'Vite React Demo',
-    description: 'A demo of Vite with React',
-  },
-  {
-    id: 'vite-react-demo',
-    name: 'Vite React Demo',
-    description: 'A demo of Vite with React',
-  },
-  {
-    id: 'vite-react-demo',
-    name: 'Vite React Demo',
-    description: 'A demo of Vite with React',
+    id: "demo-project",
+    name: "Demo Project",
+    description: "A demo of app inventor modern app",
   }
 ]
