@@ -23,3 +23,8 @@ export const mocks: Record<string, { componentElement: React.ElementType, defaul
     defaultInstance: <Element canvas is={ContainerComponent}>I m lonely</Element>
   },
 }
+
+export const componentCategories = {
+    "Basic": ["Text", "Button", "Input"],
+    "Layout": ["Container"]
+}

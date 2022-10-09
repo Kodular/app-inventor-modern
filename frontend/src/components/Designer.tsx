@@ -1,8 +1,9 @@
-import { Box, Button, Center, Grid, Paper, Stack } from "@mantine/core"
+import { AspectRatio, Button, Center, Grid, List, Paper, SimpleGrid, Stack, Tabs } from "@mantine/core"
 import { Editor, Element, Frame, useEditor } from "@craftjs/core"
 import React, { useMemo } from "react"
-import { mocks } from "@/mocks"
+import { componentCategories, mocks } from "@/mocks"
 import { ContainerComponent } from "@/mocks/ContainerComponent"
+import { HiOutlinePuzzle } from "react-icons/hi"
 
 const SaveButton = () => {
   const { query } = useEditor()
@@ -34,19 +35,35 @@ function ComponentsPanel () {
   const { connectors } = useEditor()
   return (
     <div>
-      <SaveButton/>
       <div>Components</div>
-      <Stack align={"stretch"}>
+      <Tabs orientation="vertical" defaultValue="Basic">
+        <Tabs.List>
+          {
+            Object.entries(componentCategories).map(([category], index) => (
+              <Tabs.Tab value={category} icon={<HiOutlinePuzzle size={14}/>} key={index}>{category}</Tabs.Tab>
+            ))
+          }
+        </Tabs.List>
+
         {
-          Object.entries(mocks).map(([type, { defaultInstance }], i) => (
-            <Button key={i}
-                    ref={(ref: HTMLButtonElement) => connectors.create(ref, defaultInstance)}
-            >
-              {type}
-            </Button>
+          Object.entries(componentCategories).map(([category, components], index) => (
+            <Tabs.Panel value={category} key={index}>
+              <SimpleGrid cols={2}>
+                {
+                  components.map((component, index) => (
+                    <AspectRatio ratio={1} key={index}>
+                      <Paper withBorder
+                             ref={(ref: HTMLDivElement) => connectors.create(ref, mocks[component].defaultInstance)}>
+                        {component}
+                      </Paper>
+                    </AspectRatio>
+                  ))
+                }
+              </SimpleGrid>
+            </Tabs.Panel>
           ))
         }
-      </Stack>
+      </Tabs>
     </div>
   )
 }
@@ -72,6 +89,7 @@ function TreePanel () {
     <div>
       <div>Tree</div>
       <TreeNode componentId="ROOT"/>
+      <SaveButton/>
     </div>
   )
 }
@@ -89,25 +107,25 @@ function TreeNode ({ componentId }: { componentId: string }) {
     selectedDescendants: query.node(componentId) && query.node(componentId).descendants()
   }))
 
-  function onSelect (e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
+  function onSelect (e: React.MouseEvent<HTMLElement, MouseEvent>) {
     e.stopPropagation()
     selectNode(componentId)
   }
 
   if (!selfNode) {
-    return <div onClick={onSelect}>{componentId}</div>
+    return <List.Item onClick={onSelect}>{componentId}</List.Item>
   }
   return (
-    <div onClick={onSelect}>
+    <List.Item onClick={onSelect}>
       {componentId}
-      <Box sx={{ paddingLeft: "1rem" }}>
+      <List withPadding>
         {
           selectedDescendants?.map((childId: string, i: number) => (
             <TreeNode componentId={childId} key={i}/>
           ))
         }
-      </Box>
-    </div>
+      </List>
+    </List.Item>
   )
 }
 
