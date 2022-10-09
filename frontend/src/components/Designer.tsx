@@ -70,34 +70,31 @@ function ComponentsPanel () {
 
 function LayoutPanel () {
   return (
-    <Center>
-      <Paper sx={{
-        height: 540,
-        width: 320
-      }} shadow="xs" withBorder>
+    <AspectRatio ratio={9 / 16} sx={{ maxWidth: 320 }} mx="auto">
+      <Paper shadow="xs" withBorder style={{
+        height: "100%",
+        width: "100%"
+      }}>
         <Frame>
           <Element canvas is={ContainerComponent} height="100%">
           </Element>
         </Frame>
       </Paper>
-    </Center>
+    </AspectRatio>
   )
 }
 
 function TreePanel () {
   return (
-    <div>
+    <Stack>
       <div>Tree</div>
       <TreeNode componentId="ROOT"/>
       <SaveButton/>
-    </div>
+    </Stack>
   )
 }
 
 function TreeNode ({ componentId }: { componentId: string }) {
-  // const component = useSelector(state => state.layout.components[componentId])
-  // const selectComponent = useSelector(state => state.selectComponent)
-  // get selected node
   const {
     selfNode,
     selectedDescendants,
@@ -162,14 +159,11 @@ function PropertiesPanel () {
     return <p>select a component</p>
   }
   return (
-    <div>
+    <Stack>
       <div>{selected.name} Properties</div>
-      <Stack>
-        {selected.settings && React.createElement(selected.settings)}
-      </Stack>
-      <Stack>
-        {selected.isDeletable && <Button onClick={() => actions.delete(selected.id)}>Delete</Button>}
-      </Stack>
-    </div>
+      {selected.settings && React.createElement(selected.settings)}
+      {selected.isDeletable &&
+        <Button variant="outline" color="red" onClick={() => actions.delete(selected.id)}>Delete</Button>}
+    </Stack>
   )
 }
