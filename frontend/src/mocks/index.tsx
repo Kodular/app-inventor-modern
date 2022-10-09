@@ -8,11 +8,11 @@ import React from "react"
 export const mocks: Record<string, { componentElement: React.ElementType, defaultInstance: React.ReactElement }> = {
   Text: {
     componentElement: TextComponent,
-    defaultInstance: <TextComponent text="Hello K2"/>
+    defaultInstance: <TextComponent />
   },
   Button: {
     componentElement: ButtonComponent,
-    defaultInstance: <ButtonComponent text="Hello K2"/>
+    defaultInstance: <ButtonComponent />
   },
   Input: {
     componentElement: InputComponent,
@@ -20,7 +20,7 @@ export const mocks: Record<string, { componentElement: React.ElementType, defaul
   },
   Container: {
     componentElement: ContainerComponent,
-    defaultInstance: <Element canvas is={ContainerComponent}>I m lonely</Element>
+    defaultInstance: <Element canvas is={ContainerComponent} />
   },
 }
 
