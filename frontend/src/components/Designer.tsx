@@ -1,4 +1,4 @@
-import { AspectRatio, Button, Center, Grid, List, Paper, SimpleGrid, Stack, Tabs } from "@mantine/core"
+import { AspectRatio, Button, Grid, List, Paper, SimpleGrid, Stack, Tabs } from "@mantine/core"
 import { Editor, Element, Frame, useEditor } from "@craftjs/core"
 import React, { useMemo } from "react"
 import { componentCategories, mocks } from "@/mocks"
@@ -88,7 +88,9 @@ function TreePanel () {
   return (
     <Stack>
       <div>Tree</div>
-      <TreeNode componentId="ROOT"/>
+      <List listStyleType="none">
+        <TreeNode componentId="ROOT"/>
+      </List>
       <SaveButton/>
     </Stack>
   )
@@ -97,11 +99,13 @@ function TreePanel () {
 function TreeNode ({ componentId }: { componentId: string }) {
   const {
     selfNode,
-    selectedDescendants,
+    descendants,
+    selectedNodeId,
     actions: { selectNode }
   } = useEditor((state, query) => ({
-    selfNode: query.node(componentId),
-    selectedDescendants: query.node(componentId) && query.node(componentId).descendants()
+    selfNode: query.node(componentId).get(),
+    descendants: query.node(componentId)?.descendants(),
+    selectedNodeId: query.getEvent("selected").last()
   }))
 
   function onSelect (e: React.MouseEvent<HTMLElement, MouseEvent>) {
@@ -109,15 +113,23 @@ function TreeNode ({ componentId }: { componentId: string }) {
     selectNode(componentId)
   }
 
-  if (!selfNode) {
-    return <List.Item onClick={onSelect}>{componentId}</List.Item>
-  }
+  if (!selfNode) return <p>Loading...</p>
+
   return (
     <List.Item onClick={onSelect}>
-      {componentId}
-      <List withPadding>
+      <div style={{
+        display: "flex",
+        flexDirection: "column",
+        // margin: -4,
+        // padding: 4,
+        backgroundColor: selectedNodeId === componentId ? "#4dabf733" : undefined
+      }}>
+        {componentId}
+        <small>{selfNode.data.name}</small>
+      </div>
+      <List listStyleType="none" withPadding style={{ borderLeft: "2px solid #ddd" }}>
         {
-          selectedDescendants?.map((childId: string, i: number) => (
+          descendants?.map((childId: string, i: number) => (
             <TreeNode componentId={childId} key={i}/>
           ))
         }
@@ -139,9 +151,7 @@ function PropertiesPanel () {
       selected = {
         id: currentNodeId,
         name: state.nodes[currentNodeId].data.name,
-        settings:
-          state.nodes[currentNodeId].related &&
-          state.nodes[currentNodeId].related.settings,
+        settings: state.nodes[currentNodeId].related?.settings,
         isDeletable: query.node(currentNodeId).isDeletable(),
       }
     }
@@ -160,7 +170,7 @@ function PropertiesPanel () {
   }
   return (
     <Stack>
-      <div>{selected.name} Properties</div>
+      <div>{selected.id} ({selected.name}) Properties</div>
       {selected.settings && React.createElement(selected.settings)}
       {selected.isDeletable &&
         <Button variant="outline" color="red" onClick={() => actions.delete(selected.id)}>Delete</Button>}
