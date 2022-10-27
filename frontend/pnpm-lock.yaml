@@ -9,6 +9,7 @@ specifiers:
   '@types/react-dom': ^18.0.6
   '@typescript-eslint/eslint-plugin': ^5.39.0
   '@vitejs/plugin-react': ^2.1.0
+  '@zip.js/zip.js': ^2.6.51
   blockly: ^9.0.0
   csstype: ^3.1.1
   eslint: ^8.25.0
@@ -33,6 +34,7 @@ dependencies:
   '@craftjs/core': 0.2.0-beta.8_react@18.2.0
   '@mantine/core': 5.5.4_46jyd4tz2lts7aqjdwe2gnr2n4
   '@mantine/hooks': 5.5.4_react@18.2.0
+  '@zip.js/zip.js': 2.6.51
   blockly: 9.0.0
   csstype: 3.1.1
   immer: 9.0.15
@@ -922,6 +924,11 @@ packages:
     transitivePeerDependencies:
       - supports-color
     dev: true
+
+  /@zip.js/zip.js/2.6.51:
+    resolution: {integrity: sha512-mvSKSDC6Bekbn5rIUyosto+QeN6wGUr0sNz6DDEaL4JQFyCYWDfkKoqQNDl83ad6ORmpEGMpYfLj1E6+Dbhpdg==}
+    engines: {deno: '>=1.0.0', node: '>=16.5.0'}
+    dev: false
 
   /abab/2.0.6:
     resolution: {integrity: sha512-j2afSsaIENvHZN2B8GOpF566vZ5WVk5opAiMTvWgaQT8DkbOqsTfvNAvHoRGU2zzP8cPoqys+xHTRDWW8L+/BA==}
