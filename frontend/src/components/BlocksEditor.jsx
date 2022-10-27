@@ -1,39 +1,70 @@
-import { BlocklyWorkspace } from "react-blockly";
-import { useEffect, useState } from "react";
-import '@/blocks/customBlocks'
-import { initialXml, toolboxCategories } from "@/blocks/toolbox";
+import React, { useEffect, useRef } from "react"
+import "@/blocks/customBlocks"
+import "@/blocks/generator"
+import { toolbox } from "@/blocks/toolbox"
 import { javascriptGenerator } from "blockly/javascript"
+import BlocklyComponent from "@/Blockly"
+import { useHotkeys } from "@mantine/hooks"
+import Blockly from "blockly/core"
 
-export default function () {
+function BlocksEditor ({
+  workspaceState,
+  onWorkspaceStateChange
+}) {
+  let workspaceRef = useRef(null)
+
   useEffect(() => {
-    console.log('blocks')
-  }, [])
+    if (workspaceRef.current) {
 
-  const [xml, setXml] = useState("");
-  const [javascriptCode, setJavascriptCode] = useState("");
+      Blockly.serialization.workspaces.load(workspaceState, workspaceRef.current)
 
-  function workspaceDidChange(workspace) {
-    console.log(xml)
-    const code = javascriptGenerator.workspaceToCode(workspace);
-    setJavascriptCode(code);
+      const ev = workspaceRef.current.addChangeListener(() => {
+        onWorkspaceStateChange(Blockly.serialization.workspaces.save(workspaceRef.current))
+      })
+
+      return () => {
+        workspaceRef.current.removeChangeListener(ev)
+      }
+    }
+  }, [workspaceRef])
+
+  const generateCode = () => {
+    const code = javascriptGenerator.workspaceToCode(workspaceRef.current)
+    console.log(code)
   }
 
+  useHotkeys([
+    ["ctrl+Enter", generateCode],
+    ["ctrl+R", () => Blockly.svgResize(workspaceRef.current)]
+  ])
+
   return (
-    <BlocklyWorkspace
-      toolboxConfiguration={toolboxCategories}
-      initialXml={initialXml}
-      workspaceConfiguration={{
-        grid: {
-          spacing: 20,
-          length: 3,
-          colour: "#ccc",
-          snap: true,
-        },
+    <BlocklyComponent
+      trashcan={true}
+      move={{
+        scrollbars: true,
+        drag: true,
+        wheel: true
       }}
-      onWorkspaceChange={workspaceDidChange}
-      onXmlChange={setXml}
-      className="blockly-height"
-      onDispose={()=>void 0} onImportXmlError={()=>void 0} onInject={()=>void 0}
+      grid={{
+        spacing: 20,
+        length: 3,
+        colour: "#ccc",
+        snap: true,
+      }}
+      zoom={{
+        controls: true,
+        wheel: true,
+        startScale: 1.0,
+        maxScale: 3,
+        minScale: 0.3,
+        scaleSpeed: 1.2,
+        pinch: true
+      }}
+      toolbox={toolbox}
+      workspaceRef={workspaceRef}
     />
   )
 }
+
+export default BlocksEditor
