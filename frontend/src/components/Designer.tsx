@@ -1,6 +1,6 @@
 import { AspectRatio, Button, Grid, List, Paper, SimpleGrid, Stack, Tabs } from "@mantine/core"
 import { Editor, Element, Frame, useEditor } from "@craftjs/core"
-import React, { useMemo } from "react"
+import React, { useEffect, useMemo } from "react"
 import { componentCategories, mocks } from "@/mocks"
 import { ContainerComponent } from "@/mocks/ContainerComponent"
 import { HiOutlinePuzzle } from "react-icons/hi"
@@ -16,14 +16,22 @@ const SaveButton = () => {
   )
 }
 
-export default function () {
+interface DesignerProps {
+  editorState?: string,
+  onEditorStateChange: (arg0: string) => void
+}
+
+function Designer ({
+  editorState,
+  onEditorStateChange
+}: DesignerProps) {
   // keep only component property on comp object
   const compResolver = useMemo(() => Object.fromEntries(Object.entries(mocks).map(([key, { componentElement }]) => [key, componentElement])), [mocks])
   return (
-    <Editor resolver={compResolver}>
+    <Editor resolver={compResolver} onNodesChange={(query) => onEditorStateChange(query.serialize())}>
       <Grid>
         <Grid.Col span={2}><ComponentsPanel/></Grid.Col>
-        <Grid.Col span={6}><LayoutPanel/></Grid.Col>
+        <Grid.Col span={6}><LayoutPanel editorState={editorState}/></Grid.Col>
         <Grid.Col span={2}><TreePanel/></Grid.Col>
         <Grid.Col span={2}><PropertiesPanel/></Grid.Col>
       </Grid>
@@ -68,14 +76,21 @@ function ComponentsPanel () {
   )
 }
 
-function LayoutPanel () {
+interface LayoutPanelProps {
+  editorState?: string
+}
+
+function LayoutPanel ({
+  editorState
+}: LayoutPanelProps) {
+
   return (
     <AspectRatio ratio={9 / 16} sx={{ maxWidth: 320 }} mx="auto">
       <Paper shadow="xs" withBorder style={{
         height: "100%",
         width: "100%"
       }}>
-        <Frame>
+        <Frame data={editorState}>
           <Element canvas is={ContainerComponent} height="100%">
           </Element>
         </Frame>
@@ -177,3 +192,5 @@ function PropertiesPanel () {
     </Stack>
   )
 }
+
+export default Designer
