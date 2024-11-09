@@ -20,26 +20,32 @@ export default function () {
   return (
     <AppShell
       padding="xs"
-      header={<Header/>}
+      header={{ height: 48 }}
       styles={(theme) => ({
         main: { backgroundColor: theme.colorScheme === "dark" ? theme.colors.dark[8] : theme.colors.gray[0] },
       })}
     >
-      {/* keepMounted is false because otherwise Blockly wouldn't fit perfectly as the container has display:none */}
-      <Tabs defaultValue="designer" variant="pills" radius="xl" keepMounted={false}>
-        <Tabs.List position="right">
-          <Tabs.Tab value="designer" icon={<MdDesignServices/>}>Designer</Tabs.Tab>
-          <Tabs.Tab value="blocks" icon={<HiOutlinePuzzle/>}>BlocksEditor</Tabs.Tab>
-        </Tabs.List>
+      <AppShell.Header>
+        <Header />
+      </AppShell.Header>
+      <AppShell.Main>
+        {/* keepMounted is false because otherwise Blockly wouldn't fit perfectly as the container has display:none */}
+        <Tabs defaultValue="designer" variant="pills" radius="xl" keepMounted={false}>
+          <Tabs.List position="right">
+            <Tabs.Tab value="designer" icon={<MdDesignServices />}>Designer</Tabs.Tab>
+            <Tabs.Tab value="blocks" icon={<HiOutlinePuzzle />}>BlocksEditor</Tabs.Tab>
+          </Tabs.List>
 
-        <Tabs.Panel value="designer">
-          <Designer editorState={designerState} onEditorStateChange={setDesignerState}/>
-        </Tabs.Panel>
+          <Tabs.Panel value="designer">
+            <Designer editorState={designerState} onEditorStateChange={setDesignerState} />
+          </Tabs.Panel>
 
-        <Tabs.Panel value="blocks">
-          <BlocksEditor workspaceState={blocksState} onWorkspaceStateChange={setBlocksState}/>
-        </Tabs.Panel>
-      </Tabs>
+          <Tabs.Panel value="blocks">
+            <BlocksEditor workspaceState={blocksState} onWorkspaceStateChange={setBlocksState} />
+          </Tabs.Panel>
+        </Tabs>
+      </AppShell.Main>
+
     </AppShell>
   )
 }

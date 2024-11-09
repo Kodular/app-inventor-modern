@@ -1,9 +1,8 @@
-import { AspectRatio, Button, Grid, List, Paper, SimpleGrid, Stack, Tabs } from "@mantine/core"
+import { Accordion, AspectRatio, Button, Grid, List, Paper, SimpleGrid, Stack } from "@mantine/core"
 import { Editor, Element, Frame, useEditor } from "@craftjs/core"
-import React, { useEffect, useMemo } from "react"
+import React, { useMemo } from "react"
 import { componentCategories, mocks } from "@/mocks"
 import { ContainerComponent } from "@/mocks/ContainerComponent"
-import { HiOutlinePuzzle } from "react-icons/hi"
 
 const SaveButton = () => {
   const { query } = useEditor()
@@ -21,7 +20,7 @@ interface DesignerProps {
   onEditorStateChange: (arg0: string) => void
 }
 
-function Designer ({
+function Designer({
   editorState,
   onEditorStateChange
 }: DesignerProps) {
@@ -30,48 +29,43 @@ function Designer ({
   return (
     <Editor resolver={compResolver} onNodesChange={(query) => onEditorStateChange(query.serialize())}>
       <Grid>
-        <Grid.Col span={2}><ComponentsPanel/></Grid.Col>
-        <Grid.Col span={6}><LayoutPanel editorState={editorState}/></Grid.Col>
-        <Grid.Col span={2}><TreePanel/></Grid.Col>
-        <Grid.Col span={2}><PropertiesPanel/></Grid.Col>
+        <Grid.Col span={2}><ComponentsPanel /></Grid.Col>
+        <Grid.Col span={6}><LayoutPanel editorState={editorState} /></Grid.Col>
+        <Grid.Col span={2}><TreePanel /></Grid.Col>
+        <Grid.Col span={2}><PropertiesPanel /></Grid.Col>
       </Grid>
     </Editor>
   )
 }
 
-function ComponentsPanel () {
+function ComponentsPanel() {
   const { connectors } = useEditor()
   return (
     <div>
       <div>Components</div>
-      <Tabs orientation="vertical" defaultValue="Basic">
-        <Tabs.List>
-          {
-            Object.entries(componentCategories).map(([category], index) => (
-              <Tabs.Tab value={category} icon={<HiOutlinePuzzle size={14}/>} key={index}>{category}</Tabs.Tab>
-            ))
-          }
-        </Tabs.List>
-
+      <Accordion defaultValue="Basic">
         {
-          Object.entries(componentCategories).map(([category, components], index) => (
-            <Tabs.Panel value={category} key={index}>
-              <SimpleGrid cols={2}>
-                {
-                  components.map((component, index) => (
-                    <AspectRatio ratio={1} key={index}>
-                      <Paper withBorder
-                             ref={(ref: HTMLDivElement) => connectors.create(ref, mocks[component].defaultInstance)}>
-                        {component}
-                      </Paper>
-                    </AspectRatio>
-                  ))
-                }
-              </SimpleGrid>
-            </Tabs.Panel>
+          Object.entries(componentCategories).map(([category, components]) => (
+            <Accordion.Item value={category} key={category}>
+              <Accordion.Control>{category}</Accordion.Control>
+              <Accordion.Panel>
+                <SimpleGrid cols={2}>
+                  {
+                    components.map((component, index) => (
+                      <AspectRatio ratio={1} key={index}>
+                        <Paper withBorder
+                          ref={(ref: HTMLDivElement) => connectors.create(ref, mocks[component].defaultInstance)}>
+                          {component}
+                        </Paper>
+                      </AspectRatio>
+                    ))
+                  }
+                </SimpleGrid>
+              </Accordion.Panel>
+            </Accordion.Item>
           ))
         }
-      </Tabs>
+      </Accordion>
     </div>
   )
 }
@@ -80,12 +74,12 @@ interface LayoutPanelProps {
   editorState?: string
 }
 
-function LayoutPanel ({
+function LayoutPanel({
   editorState
 }: LayoutPanelProps) {
 
   return (
-    <AspectRatio ratio={9 / 16} sx={{ maxWidth: 320 }} mx="auto">
+    <AspectRatio ratio={0.5} style={{ maxWidth: 320 }} mx="auto">
       <Paper shadow="xs" withBorder style={{
         height: "100%",
         width: "100%"
@@ -99,19 +93,19 @@ function LayoutPanel ({
   )
 }
 
-function TreePanel () {
+function TreePanel() {
   return (
     <Stack>
-      <div>Tree</div>
+      <div>Layout Tree</div>
       <List listStyleType="none">
-        <TreeNode componentId="ROOT"/>
+        <TreeNode componentId="ROOT" />
       </List>
-      <SaveButton/>
+      <SaveButton />
     </Stack>
   )
 }
 
-function TreeNode ({ componentId }: { componentId: string }) {
+function TreeNode({ componentId }: { componentId: string }) {
   const {
     selfNode,
     descendants,
@@ -123,7 +117,7 @@ function TreeNode ({ componentId }: { componentId: string }) {
     selectedNodeId: query.getEvent("selected").last()
   }))
 
-  function onSelect (e: React.MouseEvent<HTMLElement, MouseEvent>) {
+  function onSelect(e: React.MouseEvent<HTMLElement, MouseEvent>) {
     e.stopPropagation()
     selectNode(componentId)
   }
@@ -145,7 +139,7 @@ function TreeNode ({ componentId }: { componentId: string }) {
       <List listStyleType="none" withPadding style={{ borderLeft: "2px solid #ddd" }}>
         {
           descendants?.map((childId: string, i: number) => (
-            <TreeNode componentId={childId} key={i}/>
+            <TreeNode componentId={childId} key={i} />
           ))
         }
       </List>
@@ -153,7 +147,7 @@ function TreeNode ({ componentId }: { componentId: string }) {
   )
 }
 
-function PropertiesPanel () {
+function PropertiesPanel() {
   const {
     actions,
     selected,
