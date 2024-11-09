@@ -1,11 +1,11 @@
-import React, { useEffect, useRef } from "react"
+import { useEffect, useRef } from "react"
 import "@/blocks/customBlocks"
 import "@/blocks/generator"
 import { toolbox } from "@/blocks/toolbox"
 import { javascriptGenerator } from "blockly/javascript"
 import BlocklyComponent from "@/Blockly"
 import { useHotkeys } from "@mantine/hooks"
-import Blockly from "blockly/core"
+import * as Blockly from "blockly/core"
 
 function BlocksEditor ({
   workspaceState,

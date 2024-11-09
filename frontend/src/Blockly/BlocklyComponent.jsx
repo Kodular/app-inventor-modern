@@ -21,10 +21,10 @@
  * @author samelh@google.com (Sam El-Husseini)
  */
 
-import React, { useEffect, useRef } from "react"
+import { useEffect, useRef } from "react"
 
-import Blockly from "blockly/core"
-import locale from "blockly/msg/en"
+import * as Blockly from "blockly/core"
+import * as locale from "blockly/msg/en"
 import "blockly/blocks"
 
 Blockly.setLocale(locale)
